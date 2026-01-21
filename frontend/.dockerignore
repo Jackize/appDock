@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Build (will be built in Docker)
+dist
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local

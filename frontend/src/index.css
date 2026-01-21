@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1f26;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3d454f;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4d555f;
+}
+
+/* Selection */
+::selection {
+  background: rgba(14, 165, 233, 0.3);
+  color: #f1f5f9;
+}
+
+/* Base styles */
+body {
+  @apply antialiased;
+  background: linear-gradient(135deg, #0f1419 0%, #1a1f26 50%, #0f1419 100%);
+  min-height: 100vh;
+}
+
+/* Utility classes */
+@layer utilities {
+  .glass {
+    @apply bg-background-secondary/80 backdrop-blur-sm border border-border;
+  }
+
+  .card {
+    @apply bg-background-secondary rounded-xl border border-border p-4 transition-all duration-200;
+  }
+
+  .card-hover:hover {
+    @apply border-accent/50 shadow-glow;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent to-accent-teal bg-clip-text text-transparent;
+  }
+
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-light text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-glow;
+  }
+
+  .btn-secondary {
+    @apply bg-background-tertiary hover:bg-background-hover text-text-primary font-medium px-4 py-2 rounded-lg border border-border transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-status-stopped/20 hover:bg-status-stopped/30 text-status-stopped font-medium px-4 py-2 rounded-lg border border-status-stopped/30 transition-all duration-200;
+  }
+
+  .input {
+    @apply bg-background-tertiary border border-border rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all duration-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-running {
+    @apply badge bg-status-running/20 text-status-running border border-status-running/30;
+  }
+
+  .badge-stopped {
+    @apply badge bg-status-stopped/20 text-status-stopped border border-status-stopped/30;
+  }
+
+  .badge-paused {
+    @apply badge bg-status-paused/20 text-status-paused border border-status-paused/30;
+  }
+
+  .table-row {
+    @apply border-b border-border hover:bg-background-hover transition-colors duration-150;
+  }
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #1a1f26 0%,
+    #242b33 50%,
+    #1a1f26 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
