@@ -1,86 +1,113 @@
 import { Button } from "@/components/ui/Button";
+import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
+import "@xterm/xterm/css/xterm.css";
 import { Circle, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface TerminalViewProps {
   containerId: string;
   containerName: string;
 }
 
-interface TerminalLine {
-  id: number;
-  content: string;
-  type: "input" | "output" | "error" | "system";
-}
-
 export function TerminalView({ containerId, containerName }: TerminalViewProps) {
-  const [lines, setLines] = useState<TerminalLine[]>([]);
-  const [currentInput, setCurrentInput] = useState("");
   const [isConnected, setIsConnected] = useState(false);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
   const terminalRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const terminalInstanceRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const lineIdRef = useRef(0);
+  const inputBufferRef = useRef<string>("");
 
-  const addLine = useCallback((content: string, type: TerminalLine["type"]) => {
-    setLines((prev) => {
-      const newLine: TerminalLine = {
-        id: lineIdRef.current++,
-        content,
-        type,
-      };
-      // Keep last 2000 lines
-      return [...prev, newLine].slice(-2000);
+  // Initialize xterm
+  useEffect(() => {
+    if (!terminalRef.current) return;
+
+    // Create terminal instance
+    const term = new Terminal({
+      rows: 30,
+      cols: 80,
+      theme: {
+        background: "#1a1b26",
+        foreground: "#e0e0e0",
+        cursor: "#ffb86c",
+        cursorAccent: "#1a1b26",
+      },
+      fontSize: 14,
+      fontFamily: "Menlo, Monaco, 'Courier New', monospace",
+      allowProposedApi: true,
+      scrollback: 1000,
     });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(terminalRef.current);
+    terminalInstanceRef.current = term;
+
+    // Fit terminal to container
+    fitAddon.fit();
+
+    // Write initial message
+    term.writeln("Đang kết nối tới container...");
+
+    // Handle window resize
+    const handleResize = () => {
+      try {
+        fitAddon.fit();
+      } catch (e) {
+        console.log("Fit error:", e);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      term.dispose();
+    };
   }, []);
 
+  // Handle WebSocket connection
   useEffect(() => {
+    const term = terminalInstanceRef.current;
+    if (!term) return;
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/ws/containers/${containerId}/exec`;
 
     const connect = () => {
-      addLine(`Đang kết nối tới container ${containerName}...`, "system");
-
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
         setIsConnected(true);
-        addLine("Đã kết nối thành công!", "system");
+        term.clear();
+        term.writeln(`✓ Đã kết nối tới container: ${containerName}`);
+        term.write("\r\n$ ");
       };
 
       wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "output" && data.data) {
-            // Split by newlines and add each line
-            const outputLines = data.data.split(/\r?\n/);
-            outputLines.forEach((line: string) => {
-              if (line.trim()) {
-                addLine(line, "output");
-              }
-            });
+            term.write(data.data);
           } else if (data.type === "error") {
-            addLine(data.data, "error");
+            term.write(`\x1b[31m${data.data}\x1b[0m`); // Red color for errors
           }
         } catch {
           // Plain text
-          if (event.data.trim()) {
-            addLine(event.data, "output");
+          if (event.data) {
+            term.write(event.data);
           }
         }
       };
 
       wsRef.current.onclose = () => {
         setIsConnected(false);
-        addLine("Kết nối đã đóng", "system");
+        term.writeln("\r\n\n[Kết nối đã đóng]");
       };
 
       wsRef.current.onerror = () => {
         setIsConnected(false);
-        addLine("Lỗi kết nối", "error");
+        term.writeln("\r\n\n[Lỗi kết nối]");
       };
     };
 
@@ -91,108 +118,85 @@ export function TerminalView({ containerId, containerName }: TerminalViewProps) 
         wsRef.current.close();
       }
     };
-  }, [containerId, containerName, addLine]);
+  }, [containerId, containerName]);
 
-  // Auto scroll
+  // Handle terminal input
   useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [lines]);
+    const term = terminalInstanceRef.current;
+    if (!term) return;
 
-  const sendCommand = (command: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      addLine("Không thể gửi lệnh - chưa kết nối", "error");
-      return;
-    }
+    const handleData = (data: string) => {
+      const ws = wsRef.current;
 
-    // Add to history
-    if (command.trim()) {
-      setHistory((prev) => [...prev.filter((h) => h !== command), command]);
-      setHistoryIndex(-1);
-    }
-
-    // Display input
-    addLine(`$ ${command}`, "input");
-
-    // Send to WebSocket
-    wsRef.current.send(
-      JSON.stringify({
-        type: "input",
-        data: command + "\n",
-      })
-    );
-
-    setCurrentInput("");
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendCommand(currentInput);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (history.length > 0) {
-        const newIndex =
-          historyIndex < history.length - 1 ? historyIndex + 1 : historyIndex;
-        setHistoryIndex(newIndex);
-        setCurrentInput(history[history.length - 1 - newIndex] || "");
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        term.write("\x1b[31mKhông thể gửi lệnh - chưa kết nối\x1b[0m\r\n");
+        return;
       }
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (historyIndex > 0) {
-        const newIndex = historyIndex - 1;
-        setHistoryIndex(newIndex);
-        setCurrentInput(history[history.length - 1 - newIndex] || "");
-      } else if (historyIndex === 0) {
-        setHistoryIndex(-1);
-        setCurrentInput("");
-      }
-    } else if (e.key === "c" && e.ctrlKey) {
-      // Ctrl+C
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
+
+      // Handle special keys
+      if (data === "\r") {
+        // Enter key
+        term.write("\r\n");
+
+        if (inputBufferRef.current.trim()) {
+          ws.send(
+            JSON.stringify({
+              type: "input",
+              data: inputBufferRef.current + "\n",
+            })
+          );
+        }
+
+        inputBufferRef.current = "";
+        term.write("$ ");
+      } else if (data === "\u007f") {
+        // Backspace
+        if (inputBufferRef.current.length > 0) {
+          inputBufferRef.current = inputBufferRef.current.slice(0, -1);
+          term.write("\b \b");
+        }
+      } else if (data === "\u0003") {
+        // Ctrl+C
+        ws.send(
           JSON.stringify({
             type: "input",
-            data: "\x03", // Ctrl+C character
+            data: "\x03",
           })
         );
-        addLine("^C", "input");
-        setCurrentInput("");
+        term.write("^C\r\n$ ");
+        inputBufferRef.current = "";
+      } else if (data === "\u000c") {
+        // Ctrl+L - clear screen
+        term.clear();
+        inputBufferRef.current = "";
+        term.write("$ ");
+      } else if (data.charCodeAt(0) >= 32 || data === "\t") {
+        // Printable characters
+        inputBufferRef.current += data;
+        term.write(data);
       }
-    } else if (e.key === "l" && e.ctrlKey) {
-      // Ctrl+L to clear
-      e.preventDefault();
-      setLines([]);
-    }
-  };
+    };
+
+    term.onData(handleData);
+  }, []);
 
   const handleClear = () => {
-    setLines([]);
-    lineIdRef.current = 0;
-  };
-
-  const focusInput = () => {
-    inputRef.current?.focus();
-  };
-
-  const getLineColor = (type: TerminalLine["type"]) => {
-    switch (type) {
-      case "input":
-        return "text-accent";
-      case "error":
-        return "text-red-400";
-      case "system":
-        return "text-yellow-400";
-      default:
-        return "text-text-primary";
+    const term = terminalInstanceRef.current;
+    if (term) {
+      term.clear();
+      term.write("$ ");
+      inputBufferRef.current = "";
     }
+  };
+
+  const focusTerminal = () => {
+    terminalInstanceRef.current?.focus();
   };
 
   return (
     <div
       className="flex flex-col h-full bg-[#1a1b26] text-gray-100"
-      onClick={focusInput}
+      onClick={focusTerminal}
     >
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background-elevated">
@@ -215,40 +219,17 @@ export function TerminalView({ containerId, containerName }: TerminalViewProps) 
         </div>
       </div>
 
-      {/* Terminal content */}
+      {/* Terminal container */}
       <div
         ref={terminalRef}
-        className="flex-1 overflow-auto font-mono text-sm p-3 space-y-0.5"
-      >
-        {lines.map((line) => (
-          <div
-            key={line.id}
-            className={`whitespace-pre-wrap break-all ${getLineColor(line.type)}`}
-          >
-            {line.content}
-          </div>
-        ))}
-
-        {/* Input line */}
-        <div className="flex items-center">
-          <span className="text-accent select-none">$ </span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={currentInput}
-            onChange={(e) => setCurrentInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent outline-none text-text-primary font-mono caret-accent"
-            autoFocus
-            disabled={!isConnected}
-            placeholder={isConnected ? "" : "Đang chờ kết nối..."}
-          />
-        </div>
-      </div>
+        className="flex-1 overflow-hidden font-mono text-sm p-3 space-y-0.5"
+        style={{
+          backgroundColor: "#1a1b26",
+        }}
+      />
 
       {/* Help hint */}
       <div className="px-3 py-1 text-xs text-text-muted border-t border-border bg-background-elevated">
-        <span className="mr-4">↑↓ Lịch sử lệnh</span>
         <span className="mr-4">Ctrl+C Hủy</span>
         <span>Ctrl+L Xóa</span>
       </div>

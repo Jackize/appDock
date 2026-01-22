@@ -65,10 +65,14 @@ export function TabsPanel() {
     <div
       ref={panelRef}
       className={cn(
-        "fixed bottom-0 left-0 right-0 bg-background-card border-t border-border shadow-2xl z-40 transition-all duration-200",
+        "fixed bottom-0 left-0 right-0 border-t border-border shadow-2xl z-40 transition-all duration-200",
         tabsPanelOpen ? "" : "translate-y-[calc(100%-40px)]"
       )}
-      style={{ height: tabsPanelHeight }}
+      style={{
+        height: tabsPanelHeight,
+        backgroundColor: "var(--color-background-card, #1f2937)",
+        opacity: 1,
+      }}
     >
       {/* Resize handle */}
       <div
@@ -80,9 +84,9 @@ export function TabsPanel() {
       />
 
       {/* Tab bar */}
-      <div className="flex items-center h-10 px-2 border-b border-border bg-background-elevated">
+      <div className="flex items-center h-10 px-2 border-b border-border" style={{ backgroundColor: "#0f1117" }}>
         {/* Tabs */}
-        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-0.5 flex-1 scrollbar-hide bg-opacity-100">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -95,10 +99,14 @@ export function TabsPanel() {
               className={cn(
                 "group flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-t-lg transition-colors whitespace-nowrap",
                 activeTabId === tab.id
-                  ? "bg-background-card text-text-primary border-t border-l border-r border-border -mb-px"
-                  : "text-text-muted hover:text-text-primary hover:bg-background-hover"
+                  ? "text-text-primary border-t border-l border-r border-border -mb-px"
+                  : "text-text-muted hover:text-text-primary hover:opacity-80"
               )}
-            >
+              style={
+                activeTabId === tab.id
+                  ? { backgroundColor: "#2d3139" }
+                  : { backgroundColor: "#161b22" }
+              }           >
               {getTabIcon(tab)}
               <span className="max-w-32 truncate">{tab.containerName}</span>
               <span className="text-xs text-text-muted">
