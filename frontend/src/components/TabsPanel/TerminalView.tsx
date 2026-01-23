@@ -8,12 +8,14 @@ import { useEffect, useRef, useState } from "react";
 interface TerminalViewProps {
   containerId: string;
   containerName: string;
+  isActive?: boolean;
 }
 
-export function TerminalView({ containerId, containerName }: TerminalViewProps) {
+export function TerminalView({ containerId, containerName, isActive = true }: TerminalViewProps) {
   const [isConnected, setIsConnected] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalInstanceRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const inputBufferRef = useRef<string>("");
 
@@ -38,12 +40,19 @@ export function TerminalView({ containerId, containerName }: TerminalViewProps) 
     });
 
     const fitAddon = new FitAddon();
+    fitAddonRef.current = fitAddon;
     term.loadAddon(fitAddon);
     term.open(terminalRef.current);
     terminalInstanceRef.current = term;
 
-    // Fit terminal to container
-    fitAddon.fit();
+    // Fit terminal to container (delay for visibility)
+    setTimeout(() => {
+      try {
+        fitAddon.fit();
+      } catch (e) {
+        console.log("Initial fit error:", e);
+      }
+    }, 100);
 
     // Write initial message
     term.writeln("Đang kết nối tới container...");
@@ -64,6 +73,21 @@ export function TerminalView({ containerId, containerName }: TerminalViewProps) 
       term.dispose();
     };
   }, []);
+
+  // Re-fit terminal when becoming active (visible)
+  useEffect(() => {
+    if (isActive && fitAddonRef.current) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        try {
+          fitAddonRef.current?.fit();
+          terminalInstanceRef.current?.focus();
+        } catch (e) {
+          console.log("Fit on active error:", e);
+        }
+      }, 50);
+    }
+  }, [isActive]);
 
   // Handle WebSocket connection
   useEffect(() => {
@@ -205,7 +229,7 @@ export function TerminalView({ containerId, containerName }: TerminalViewProps) 
             className={`w-2 h-2 ${isConnected ? "fill-green-500 text-green-500" : "fill-red-500 text-red-500"}`}
           />
           <span className="text-sm text-text-muted">
-            {isConnected ? "Đang kết nối" : "Mất kết nối"}
+            {isConnected ? "Đã kết nối" : "Mất kết nối"}
           </span>
           <span className="text-sm text-text-muted">•</span>
           <span className="text-sm text-text-muted font-mono">
