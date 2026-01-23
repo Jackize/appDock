@@ -148,21 +148,31 @@ export function TabsPanel() {
         </div>
       </div>
 
-      {/* Tab content */}
-      <div className="h-[calc(100%-40px)] overflow-hidden">
-        {activeTab ? (
-          activeTab.type === "logs" ? (
-            <LogViewer
-              containerId={activeTab.containerId}
-              containerName={activeTab.containerName}
-            />
-          ) : (
-            <TerminalView
-              containerId={activeTab.containerId}
-              containerName={activeTab.containerName}
-            />
-          )
-        ) : (
+      {/* Tab content - Render tất cả tabs, chỉ ẩn/hiện bằng CSS để giữ WebSocket connections */}
+      <div className="h-[calc(100%-40px)] overflow-hidden relative">
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            className={cn(
+              "absolute inset-0",
+              activeTabId === tab.id ? "z-10 visible" : "z-0 invisible"
+            )}
+          >
+            {tab.type === "logs" ? (
+              <LogViewer
+                containerId={tab.containerId}
+                containerName={tab.containerName}
+              />
+            ) : (
+              <TerminalView
+                containerId={tab.containerId}
+                containerName={tab.containerName}
+                isActive={activeTabId === tab.id}
+              />
+            )}
+          </div>
+        ))}
+        {tabs.length === 0 && (
           <div className="flex items-center justify-center h-full text-text-muted">
             Chọn một tab để xem nội dung
           </div>
