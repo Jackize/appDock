@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+.cursor
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts (not needed in image)
+scripts/
+
+# Build artifacts
+dist/
+
+# Development files
+docker-compose.dev.yml
+Makefile
+
+# Frontend build artifacts (will be built fresh)
+frontend/node_modules
+frontend/dist
+
+# Backend build artifacts
+backend/appdock
+backend/*.exe
+
+# Logs
+*.log
+
+# Deploy files
+deploy.yml

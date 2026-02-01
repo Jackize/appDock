@@ -7,34 +7,41 @@
   ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
   ![License](https://img.shields.io/badge/license-MIT-green.svg)
   ![Docker](https://img.shields.io/badge/docker-required-blue.svg)
+  ![Docker Pulls](https://img.shields.io/docker/pulls/nguyenhao2042/appdock.svg)
 </div>
 
 ---
 
-## ⚡ Quick Start (1 lệnh duy nhất)
+## ⚡ Quick Start
 
-### Yêu cầu
-- **Docker** và **Docker Compose** đang chạy trên máy
+### 🐳 Cách 1: Docker Run (Nhanh nhất - 1 lệnh duy nhất)
 
-### Cài đặt & Chạy
-
-**Linux/macOS:**
 ```bash
-git clone https://github.com/your-username/appdock.git
-cd appdock
-./scripts/start.sh
+docker run -d \
+  --name appdock \
+  -p 3000:3000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  nguyenhao2042/appdock:latest
 ```
 
-**Windows:**
-```cmd
-git clone https://github.com/your-username/appdock.git
-cd appdock
-scripts\start.bat
-```
+🌐 Mở **http://localhost:3000** trong trình duyệt
 
-**Hoặc dùng Docker Compose trực tiếp:**
+### 📦 Cách 2: Docker Compose
+
 ```bash
+# Download docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/nguyenhao2042/appdock/main/docker-compose.yml -o docker-compose.yml
+
+# Chạy
 docker compose up -d
+```
+
+### 🔧 Cách 3: Clone & Build
+
+```bash
+git clone https://github.com/nguyenhao2042/appdock.git
+cd appdock
+docker compose up -d --build
 ```
 
 🌐 Mở **http://localhost:3000** trong trình duyệt
@@ -58,13 +65,13 @@ docker compose up -d
 
 ## 🛠️ Commands
 
-| Command | Mô tả |
-|---------|-------|
-| `docker compose up -d` | Khởi động AppDock |
-| `docker compose down` | Dừng AppDock |
-| `docker compose logs -f` | Xem logs |
-| `docker compose restart` | Khởi động lại |
-| `docker compose pull && docker compose up -d` | Cập nhật |
+| Command                                       | Mô tả             |
+| --------------------------------------------- | ----------------- |
+| `docker compose up -d`                        | Khởi động AppDock |
+| `docker compose down`                         | Dừng AppDock      |
+| `docker compose logs -f`                      | Xem logs          |
+| `docker compose restart`                      | Khởi động lại     |
+| `docker compose pull && docker compose up -d` | Cập nhật          |
 
 ### Sử dụng Makefile (optional)
 
@@ -83,6 +90,7 @@ make clean     # Dọn dẹp
 Nếu bạn muốn develop:
 
 ### Yêu cầu
+
 - Node.js 18+
 - Go 1.21+
 - Docker đang chạy
@@ -117,6 +125,7 @@ Truy cập **http://localhost:5173**
 ## 🏗️ Tech Stack
 
 ### Frontend
+
 - **React 18** + **Vite** - Build tool siêu nhanh
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling hiện đại
@@ -126,6 +135,7 @@ Truy cập **http://localhost:5173**
 - **Recharts** - Charts và biểu đồ
 
 ### Backend
+
 - **Go (Golang)** - Backend API
 - **Gin** - Web framework
 - **Docker SDK** - Tương tác với Docker Engine
@@ -137,15 +147,20 @@ Truy cập **http://localhost:5173**
 
 ```
 appdock/
-├── backend/                  # Golang Backend
-│   ├── Dockerfile
+├── Dockerfile               # Unified Dockerfile (single image)
+├── docker-compose.yml       # Production (single container)
+├── docker-compose.dev.yml   # Development (2 containers)
+├── Makefile                 # Build automation
+│
+├── backend/                 # Golang Backend
+│   ├── Dockerfile           # Backend-only Dockerfile (dev)
 │   ├── main.go
 │   └── internal/
 │       ├── handlers/        # HTTP & WebSocket handlers
 │       └── services/        # Docker service
 │
 ├── frontend/                # React Frontend
-│   ├── Dockerfile
+│   ├── Dockerfile           # Frontend-only Dockerfile (dev)
 │   ├── nginx.conf
 │   └── src/
 │       ├── components/      # UI components
@@ -155,13 +170,9 @@ appdock/
 │       ├── stores/          # Zustand stores
 │       └── types/           # TypeScript types
 │
-├── scripts/                 # Start scripts
-│   ├── start.sh            # Linux/macOS
-│   └── start.bat           # Windows
-│
-├── docker-compose.yml       # Docker Compose config
-├── Makefile                 # Build automation
-└── README.md
+└── scripts/                 # Start scripts
+    ├── start.sh             # Linux/macOS
+    └── start.bat            # Windows
 ```
 
 ---
@@ -178,10 +189,12 @@ appdock/
 ## 📖 API Endpoints
 
 ### System
+
 - `GET /api/system/info` - Thông tin Docker
 - `GET /api/system/stats` - Thống kê hệ thống
 
 ### Containers
+
 - `GET /api/containers` - Danh sách containers
 - `GET /api/containers/:id` - Chi tiết container
 - `POST /api/containers/:id/start` - Khởi động
@@ -192,18 +205,77 @@ appdock/
 - `GET /api/containers/:id/stats` - Thống kê
 
 ### WebSocket
+
 - `WS /ws/containers/:id/logs` - Stream logs realtime
 - `WS /ws/containers/:id/exec` - Terminal exec
 
 ### Images
+
 - `GET /api/images` - Danh sách images
 - `DELETE /api/images/:id` - Xóa image
 - `DELETE /api/images/bulk` - Xóa nhiều images
 - `POST /api/images/pull` - Pull image
 
 ### Networks & Volumes
+
 - `GET /api/networks` - Danh sách networks
 - `GET /api/volumes` - Danh sách volumes
+
+---
+
+## 🚢 CI/CD với GitHub Actions
+
+Image được tự động build và push lên Docker Hub khi tạo Release trên GitHub.
+
+### Setup GitHub Secrets
+
+Vào **Settings → Secrets and variables → Actions** và thêm:
+
+| Secret | Mô tả |
+|--------|-------|
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub Access Token (tạo tại https://hub.docker.com/settings/security) |
+
+### Tạo Release
+
+1. Vào **Releases → Create a new release**
+2. Tạo tag mới (ví dụ: `v1.0.0`)
+3. Điền release notes
+4. Click **Publish release**
+
+GitHub Actions sẽ tự động:
+- Build Docker image cho cả AMD64 và ARM64
+- Push lên Docker Hub với tags: `latest`, `1.0.0`, `1.0`, `1`
+- Cập nhật README trên Docker Hub
+
+### Manual Build (Local)
+
+```bash
+# Build image
+docker build -t appdock:latest .
+
+# Tag với Docker Hub username
+docker tag appdock:latest your-username/appdock:latest
+docker tag appdock:latest your-username/appdock:v1.0.0
+
+# Push lên Docker Hub
+docker push your-username/appdock:latest
+docker push your-username/appdock:v1.0.0
+```
+
+### Multi-architecture Build (Local)
+
+```bash
+# Tạo builder (chỉ cần 1 lần)
+docker buildx create --name mybuilder --use
+
+# Build và push cho cả Intel/AMD và Apple Silicon
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t your-username/appdock:latest \
+  -t your-username/appdock:v1.0.0 \
+  --push .
+```
 
 ---
 
