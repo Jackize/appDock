@@ -223,33 +223,47 @@ appdock/
 
 ---
 
-## 🚢 Publish lên Docker Hub
+## 🚢 CI/CD với GitHub Actions
 
-### Bước 1: Login vào Docker Hub
+Image được tự động build và push lên Docker Hub khi tạo Release trên GitHub.
 
-```bash
-docker login
-```
+### Setup GitHub Secrets
 
-### Bước 2: Build và tag image
+Vào **Settings → Secrets and variables → Actions** và thêm:
+
+| Secret | Mô tả |
+|--------|-------|
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub Access Token (tạo tại https://hub.docker.com/settings/security) |
+
+### Tạo Release
+
+1. Vào **Releases → Create a new release**
+2. Tạo tag mới (ví dụ: `v1.0.0`)
+3. Điền release notes
+4. Click **Publish release**
+
+GitHub Actions sẽ tự động:
+- Build Docker image cho cả AMD64 và ARM64
+- Push lên Docker Hub với tags: `latest`, `1.0.0`, `1.0`, `1`
+- Cập nhật README trên Docker Hub
+
+### Manual Build (Local)
 
 ```bash
 # Build image
 docker build -t appdock:latest .
 
 # Tag với Docker Hub username
-docker tag appdock:latest nguyenhao2042/appdock:latest
-docker tag appdock:latest nguyenhao2042/appdock:v1.0.0
+docker tag appdock:latest your-username/appdock:latest
+docker tag appdock:latest your-username/appdock:v1.0.0
+
+# Push lên Docker Hub
+docker push your-username/appdock:latest
+docker push your-username/appdock:v1.0.0
 ```
 
-### Bước 3: Push lên Docker Hub
-
-```bash
-docker push nguyenhao2042/appdock:latest
-docker push nguyenhao2042/appdock:v1.0.0
-```
-
-### Multi-architecture Build (AMD64 + ARM64)
+### Multi-architecture Build (Local)
 
 ```bash
 # Tạo builder (chỉ cần 1 lần)
@@ -258,8 +272,8 @@ docker buildx create --name mybuilder --use
 # Build và push cho cả Intel/AMD và Apple Silicon
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t nguyenhao2042/appdock:latest \
-  -t nguyenhao2042/appdock:v1.0.0 \
+  -t your-username/appdock:latest \
+  -t your-username/appdock:v1.0.0 \
   --push .
 ```
 
