@@ -1,0 +1,38 @@
+version: "3.8"
+
+# =============================================================================
+# AppDock - Development Mode (2 containers riêng biệt)
+# Dùng khi phát triển để hot-reload code
+# Usage: docker compose -f docker-compose.dev.yml up -d
+# =============================================================================
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PORT=8080
+    restart: unless-stopped
+    networks:
+      - appdock-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - appdock-network
+
+networks:
+  appdock-network:
+    driver: bridge

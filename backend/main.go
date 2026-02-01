@@ -2,7 +2,10 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"appdock/internal/handlers"
 	"appdock/internal/services"
@@ -29,7 +32,7 @@ func main() {
 	// Khởi tạo Gin router
 	router := gin.Default()
 
-	// CORS configuration
+	// CORS configuration (chỉ cần cho development mode)
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
@@ -89,13 +92,47 @@ func main() {
 	router.GET("/ws/containers/:id/logs", containerHandler.StreamLogs)
 	router.GET("/ws/containers/:id/exec", containerHandler.ExecTerminal)
 
-	// Lấy port từ environment hoặc mặc định 8080
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Serve static files (Frontend) - cho production mode
+	staticPath := os.Getenv("STATIC_PATH")
+	if staticPath == "" {
+		staticPath = "./static" // Mặc định là ./static
 	}
 
-	log.Printf("🚀 AppDock Backend đang chạy tại http://localhost:%s", port)
+	// Kiểm tra xem có thư mục static không (production mode)
+	if _, err := os.Stat(staticPath); err == nil {
+		log.Printf("📁 Serving static files from: %s", staticPath)
+
+		// Serve static assets (JS, CSS, images, etc.)
+		router.Static("/assets", filepath.Join(staticPath, "assets"))
+
+		// Serve favicon và các file static khác ở root
+		router.StaticFile("/favicon.ico", filepath.Join(staticPath, "favicon.ico"))
+		router.StaticFile("/vite.svg", filepath.Join(staticPath, "vite.svg"))
+
+		// SPA fallback - serve index.html cho tất cả routes không match
+		router.NoRoute(func(c *gin.Context) {
+			path := c.Request.URL.Path
+
+			// Nếu là API hoặc WebSocket request thì return 404
+			if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/ws") {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+				return
+			}
+
+			// Serve index.html cho SPA routing
+			c.File(filepath.Join(staticPath, "index.html"))
+		})
+	} else {
+		log.Printf("⚠️  Static folder not found at %s - Running in API-only mode", staticPath)
+	}
+
+	// Lấy port từ environment hoặc mặc định 3000 (unified port)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	log.Printf("🚀 AppDock đang chạy tại http://localhost:%s", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("Không thể khởi động server: %v", err)
 	}

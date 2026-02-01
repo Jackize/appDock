@@ -44,14 +44,12 @@ export function TabsPanel() {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [tabsPanelHeight, setTabsPanelHeight]
+    [tabsPanelHeight, setTabsPanelHeight],
   );
 
   if (tabs.length === 0) {
     return null;
   }
-
-  const activeTab = tabs.find((t) => t.id === activeTabId);
 
   const getTabIcon = (tab: Tab) => {
     return tab.type === "logs" ? (
@@ -66,7 +64,7 @@ export function TabsPanel() {
       ref={panelRef}
       className={cn(
         "fixed bottom-0 left-0 right-0 border-t border-border shadow-2xl z-40 transition-all duration-200",
-        tabsPanelOpen ? "" : "translate-y-[calc(100%-40px)]"
+        tabsPanelOpen ? "" : "translate-y-[calc(100%-40px)]",
       )}
       style={{
         height: tabsPanelHeight,
@@ -78,13 +76,16 @@ export function TabsPanel() {
       <div
         className={cn(
           "absolute top-0 left-0 right-0 h-1 cursor-ns-resize bg-transparent hover:bg-accent/50 transition-colors",
-          isResizing && "bg-accent"
+          isResizing && "bg-accent",
         )}
         onMouseDown={handleMouseDown}
       />
 
       {/* Tab bar */}
-      <div className="flex items-center h-10 px-2 border-b border-border" style={{ backgroundColor: "#0f1117" }}>
+      <div
+        className="flex items-center h-10 px-2 border-b border-border"
+        style={{ backgroundColor: "#0f1117" }}
+      >
         {/* Tabs */}
         <div className="flex items-center gap-0.5 flex-1 scrollbar-hide bg-opacity-100">
           {tabs.map((tab) => (
@@ -100,13 +101,14 @@ export function TabsPanel() {
                 "group flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-t-lg transition-colors whitespace-nowrap",
                 activeTabId === tab.id
                   ? "text-text-primary border-t border-l border-r border-border -mb-px"
-                  : "text-text-muted hover:text-text-primary hover:opacity-80"
+                  : "text-text-muted hover:text-text-primary hover:opacity-80",
               )}
               style={
                 activeTabId === tab.id
                   ? { backgroundColor: "#2d3139" }
                   : { backgroundColor: "#161b22" }
-              }           >
+              }
+            >
               {getTabIcon(tab)}
               <span className="max-w-32 truncate">{tab.containerName}</span>
               <span className="text-xs text-text-muted">
@@ -155,7 +157,7 @@ export function TabsPanel() {
             key={tab.id}
             className={cn(
               "absolute inset-0",
-              activeTabId === tab.id ? "z-10 visible" : "z-0 invisible"
+              activeTabId === tab.id ? "z-10 visible" : "z-0 invisible",
             )}
           >
             {tab.type === "logs" ? (
