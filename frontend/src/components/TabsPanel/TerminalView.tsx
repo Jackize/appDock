@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { getAuthToken } from "@/stores/authStore";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -96,7 +97,9 @@ export function TerminalView({ containerId, containerName, isActive = true }: Te
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/containers/${containerId}/exec`;
+    const token = getAuthToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+    const wsUrl = `${protocol}//${host}/ws/containers/${containerId}/exec${tokenParam}`;
 
     const connect = () => {
       wsRef.current = new WebSocket(wsUrl);
