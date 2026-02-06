@@ -1,6 +1,8 @@
 package services
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"os"
 	"time"
@@ -9,21 +11,29 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid username or password")
-	ErrInvalidToken       = errors.New("invalid or expired token")
+	ErrInvalidCredentials     = errors.New("invalid username or password")
+	ErrInvalidToken           = errors.New("invalid or expired token")
+	ErrInvalidCurrentPassword = errors.New("invalid current password")
+	ErrPasswordTooShort       = errors.New("password must be at least 6 characters")
 )
 
 // AuthService xử lý authentication
 type AuthService struct {
-	username  string
-	password  string
-	jwtSecret []byte
+	username       string
+	passwordHash   string // Lưu password đã hash SHA-256
+	jwtSecret      []byte
 }
 
 // Claims cho JWT token
 type Claims struct {
 	Username string `json:"username"`
 	jwt.RegisteredClaims
+}
+
+// hashSHA256 tạo SHA-256 hash của string
+func hashSHA256(s string) string {
+	hash := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(hash[:])
 }
 
 // NewAuthService tạo AuthService mới
@@ -44,17 +54,21 @@ func NewAuthService() *AuthService {
 		jwtSecret = "appdock-secret-key-change-in-production" // Default secret
 	}
 
+	// Hash password để so sánh với password đã hash từ frontend
+	passwordHash := hashSHA256(password)
+
 	return &AuthService{
-		username:  username,
-		password:  password,
-		jwtSecret: []byte(jwtSecret),
+		username:     username,
+		passwordHash: passwordHash,
+		jwtSecret:    []byte(jwtSecret),
 	}
 }
 
 // Login xác thực user và trả về JWT token
-func (s *AuthService) Login(username, password string) (string, error) {
-	// Kiểm tra credentials
-	if username != s.username || password != s.password {
+// password nhận vào đã được hash SHA-256 từ frontend
+func (s *AuthService) Login(username, hashedPassword string) (string, error) {
+	// Kiểm tra credentials (so sánh password đã hash)
+	if username != s.username || hashedPassword != s.passwordHash {
 		return "", ErrInvalidCredentials
 	}
 
@@ -131,4 +145,24 @@ func (s *AuthService) IsAuthEnabled() bool {
 // GetCurrentUser trả về username hiện tại (cho display)
 func (s *AuthService) GetCurrentUser() string {
 	return s.username
+}
+
+// ChangePassword đổi mật khẩu
+// currentPassword và newPassword nhận vào đã được hash SHA-256 từ frontend
+func (s *AuthService) ChangePassword(hashedCurrentPassword, hashedNewPassword string) error {
+	// Kiểm tra mật khẩu hiện tại (so sánh hash)
+	if hashedCurrentPassword != s.passwordHash {
+		return ErrInvalidCurrentPassword
+	}
+
+	// Kiểm tra độ dài password hash (SHA-256 = 64 ký tự hex)
+	// Không thể kiểm tra độ dài password gốc vì đã hash
+	if len(hashedNewPassword) != 64 {
+		return ErrPasswordTooShort
+	}
+
+	// Cập nhật password hash trong memory
+	s.passwordHash = hashedNewPassword
+
+	return nil
 }

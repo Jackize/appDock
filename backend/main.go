@@ -62,6 +62,7 @@ func main() {
 		// Auth routes (cần đăng nhập)
 		api.POST("/auth/refresh", authHandler.RefreshToken)
 		api.GET("/auth/me", authHandler.GetMe)
+		api.POST("/auth/change-password", authHandler.ChangePassword)
 
 		// System
 		api.GET("/system/info", systemHandler.GetSystemInfo)

@@ -111,6 +111,46 @@ func (h *AuthHandler) GetAuthStatus(c *gin.Context) {
 	})
 }
 
+// ChangePasswordRequest request body cho đổi mật khẩu
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword" binding:"required"`
+	NewPassword     string `json:"newPassword" binding:"required"`
+}
+
+// ChangePassword xử lý đổi mật khẩu
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới",
+		})
+		return
+	}
+
+	err := h.authService.ChangePassword(req.CurrentPassword, req.NewPassword)
+	if err != nil {
+		switch err {
+		case services.ErrInvalidCurrentPassword:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Mật khẩu hiện tại không đúng",
+			})
+		case services.ErrPasswordTooShort:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Mật khẩu mới phải có ít nhất 6 ký tự",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Đã xảy ra lỗi khi đổi mật khẩu",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Đổi mật khẩu thành công",
+	})
+}
+
 // extractToken lấy token từ Authorization header
 func extractToken(c *gin.Context) string {
 	bearerToken := c.GetHeader("Authorization")
