@@ -8,19 +8,45 @@ import type {
   SystemStats,
   Volume,
 } from "@/types";
+import { getAuthToken, useAuthStore } from "@/stores/authStore";
 
 const API_BASE = "/api";
 
+// Custom error class for auth errors
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
 async function fetchAPI<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit,
+  skipAuth = false
 ): Promise<T> {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...options?.headers,
+  };
+
+  // Add auth token if available and not skipping auth
+  if (token && !skipAuth) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-    },
     ...options,
+    headers,
   });
+
+  // Handle 401 Unauthorized - token expired or invalid
+  if (response.status === 401) {
+    // Logout user on auth error
+    useAuthStore.getState().logout();
+    throw new AuthError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+  }
 
   if (!response.ok) {
     const error = await response
@@ -31,6 +57,67 @@ async function fetchAPI<T>(
 
   return response.json();
 }
+
+// ==================== AUTH ====================
+
+import { hashPassword } from "@/lib/crypto";
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  username: string;
+  expiresIn: number;
+}
+
+export interface AuthStatusResponse {
+  enabled: boolean;
+}
+
+export const authAPI = {
+  // Get auth status (public endpoint)
+  getStatus: () =>
+    fetchAPI<AuthStatusResponse>("/auth/status", undefined, true),
+
+  // Login (public endpoint) - password được hash SHA-256 trước khi gửi
+  login: async (data: LoginRequest) => {
+    const hashedPassword = await hashPassword(data.password);
+    return fetchAPI<LoginResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        username: data.username,
+        password: hashedPassword,
+      }),
+    }, true);
+  },
+
+  // Refresh token (requires auth)
+  refresh: () =>
+    fetchAPI<{ token: string; expiresIn: number }>("/auth/refresh", {
+      method: "POST",
+    }),
+
+  // Get current user (requires auth)
+  getMe: () => fetchAPI<{ username: string }>("/auth/me"),
+
+  // Change password (requires auth) - passwords được hash SHA-256 trước khi gửi
+  changePassword: async (data: { currentPassword: string; newPassword: string }) => {
+    const [hashedCurrentPassword, hashedNewPassword] = await Promise.all([
+      hashPassword(data.currentPassword),
+      hashPassword(data.newPassword),
+    ]);
+    return fetchAPI<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({
+        currentPassword: hashedCurrentPassword,
+        newPassword: hashedNewPassword,
+      }),
+    });
+  },
+};
 
 // ==================== SYSTEM ====================
 

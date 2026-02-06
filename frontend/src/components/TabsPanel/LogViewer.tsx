@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { getAuthToken } from "@/stores/authStore";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Download, Pause, Play, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -68,8 +69,14 @@ export function LogViewer({ containerId, containerName }: LogViewerProps) {
     // First, fetch existing logs via REST API
     const fetchInitialLogs = async () => {
       try {
+        const token = getAuthToken();
+        const headers: HeadersInit = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
         const response = await fetch(
-          `/api/containers/${containerId}/logs?tail=500`
+          `/api/containers/${containerId}/logs?tail=500`,
+          { headers }
         );
         if (!response.ok) throw new Error("Failed to fetch logs");
         
@@ -99,7 +106,9 @@ export function LogViewer({ containerId, containerName }: LogViewerProps) {
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws/containers/${containerId}/logs`;
+      const token = getAuthToken();
+      const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+      const wsUrl = `${protocol}//${host}/ws/containers/${containerId}/logs${tokenParam}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

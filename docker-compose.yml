@@ -13,18 +13,30 @@ services:
     image: appdock:latest
     container_name: appdock
     ports:
-      - "3000:3000"
+      - "8080:8080"
     volumes:
       # Mount Docker socket để app có thể quản lý Docker
       # Linux/macOS: /var/run/docker.sock
       # Windows (WSL2): /var/run/docker.sock hoặc //var/run/docker.sock
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - PORT=3000
+      - PORT=8080
       - GIN_MODE=release
+      - APPDOCK_USERNAME=admin
+      - APPDOCK_PASSWORD=appdock
+      - APPDOCK_JWT_SECRET=dev-secret-key-not-for-production
+      - APPDOCK_AUTH_DISABLED=false
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/system/info"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/auth/status",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
