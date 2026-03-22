@@ -19,9 +19,9 @@ var (
 
 // AuthService xử lý authentication
 type AuthService struct {
-	username       string
-	passwordHash   string // Lưu password đã hash SHA-256
-	jwtSecret      []byte
+	username     string
+	passwordHash string // Lưu password đã hash SHA-256
+	jwtSecret    []byte
 }
 
 // Claims cho JWT token
@@ -145,6 +145,11 @@ func (s *AuthService) IsAuthEnabled() bool {
 // GetCurrentUser trả về username hiện tại (cho display)
 func (s *AuthService) GetCurrentUser() string {
 	return s.username
+}
+
+// GetPassword trả về password hiện tại (cho display)
+func (s *AuthService) GetPassword() string {
+	return s.passwordHash
 }
 
 // ChangePassword đổi mật khẩu
