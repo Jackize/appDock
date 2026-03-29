@@ -34,7 +34,7 @@ install: ## Cài đặt dependencies (dev mode)
 
 build-frontend: ## Build frontend and copy assets to backend/static
 	@echo "🔨 Building frontend..."
-	cd frontend && npm run build
+	cd frontend && npm ci && npm run build
 	@echo "📦 Copying assets to backend/static..."
 	cp -r frontend/dist/. backend/static/
 
