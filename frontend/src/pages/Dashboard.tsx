@@ -22,37 +22,39 @@ import {
   YAxis,
 } from "recharts";
 
-// Mock data for charts - in production, this would come from real-time stats
-const generateChartData = () => {
-  return Array.from({ length: 12 }, (_, i) => ({
-    time: `${i * 5}s`,
-    cpu: Math.random() * 30 + 10,
-    memory: Math.random() * 20 + 40,
+const getTimeLabel = () =>
+  new Date().toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+type ChartPoint = { time: string; cpu: number; memory: number };
+
+const buildInitialChart = (): ChartPoint[] =>
+  Array.from({ length: 20 }, () => ({
+    time: getTimeLabel(),
+    cpu: 0,
+    memory: 0,
   }));
-};
 
 export function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useSystemStats();
   const { data: containers } = useContainers();
-  const [chartData, setChartData] = useState(generateChartData());
+  const [chartData, setChartData] = useState<ChartPoint[]>(buildInitialChart);
 
-  // Simulate real-time chart updates
+  // Append real stats to chart whenever stats refetches
   useEffect(() => {
-    const interval = setInterval(() => {
-      setChartData((prev) => {
-        const newData = [
-          ...prev.slice(1),
-          {
-            time: `${parseInt(prev[prev.length - 1].time) + 5}s`,
-            cpu: Math.random() * 30 + 10,
-            memory: Math.random() * 20 + 40,
-          },
-        ];
-        return newData;
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!stats) return;
+    setChartData((prev) => [
+      ...prev.slice(1),
+      {
+        time: getTimeLabel(),
+        cpu: parseFloat(stats.cpuUsage.toFixed(1)),
+        memory: parseFloat(stats.memoryUsage.toFixed(1)),
+      },
+    ]);
+  }, [stats]);
 
   const statCards = [
     {
@@ -164,8 +166,18 @@ export function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2d353f" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} unit="%" />
+                  <XAxis
+                    dataKey="time"
+                    stroke="#64748b"
+                    fontSize={10}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    stroke="#64748b"
+                    fontSize={12}
+                    unit="%"
+                    domain={[0, 100]}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#1a1f26",
@@ -213,8 +225,18 @@ export function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2d353f" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} unit="%" />
+                  <XAxis
+                    dataKey="time"
+                    stroke="#64748b"
+                    fontSize={10}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    stroke="#64748b"
+                    fontSize={12}
+                    unit="%"
+                    domain={[0, 100]}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#1a1f26",
@@ -331,4 +353,3 @@ export function Dashboard() {
     </div>
   );
 }
-

@@ -1,10 +1,11 @@
 package main
 
 import (
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"appdock/internal/handlers"
@@ -15,6 +16,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+//go:embed all:static
+var embeddedStatic embed.FS
 
 func main() {
 	// Load .env file if exists (optional, won't error if not found)
@@ -118,38 +122,42 @@ func main() {
 		ws.GET("/containers/:id/exec", containerHandler.ExecTerminal)
 	}
 
-	// Serve static files (Frontend) - cho production mode
-	staticPath := os.Getenv("STATIC_PATH")
-	if staticPath == "" {
-		staticPath = "./static" // Mặc định là ./static
+	// Serve static files (Frontend)
+	// Priority: embedded static > ./static folder > API-only mode
+	var staticFS http.FileSystem
+	if sub, err := fs.Sub(embeddedStatic, "static"); err == nil {
+		// Check if embedded FS has actual content (index.html)
+		if f, err := sub.Open("index.html"); err == nil {
+			f.Close()
+			staticFS = http.FS(sub)
+			log.Printf("📦 Serving embedded static files")
+		}
+	}
+	if staticFS == nil {
+		if _, err := os.Stat("./static"); err == nil {
+			staticFS = http.Dir("./static")
+			log.Printf("📁 Serving static files from ./static")
+		}
 	}
 
-	// Kiểm tra xem có thư mục static không (production mode)
-	if _, err := os.Stat(staticPath); err == nil {
-		log.Printf("📁 Serving static files from: %s", staticPath)
-
-		// Serve static assets (JS, CSS, images, etc.)
-		router.Static("/assets", filepath.Join(staticPath, "assets"))
-
-		// Serve favicon và các file static khác ở root
-		router.StaticFile("/favicon.ico", filepath.Join(staticPath, "favicon.ico"))
-		router.StaticFile("/vite.svg", filepath.Join(staticPath, "vite.svg"))
-
-		// SPA fallback - serve index.html cho tất cả routes không match
+	if staticFS != nil {
 		router.NoRoute(func(c *gin.Context) {
 			path := c.Request.URL.Path
-
-			// Nếu là API hoặc WebSocket request thì return 404
 			if strings.HasPrefix(path, "/api") || strings.HasPrefix(path, "/ws") {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
 				return
 			}
-
-			// Serve index.html cho SPA routing
-			c.File(filepath.Join(staticPath, "index.html"))
+			// Try to serve the file, fallback to index.html for SPA routing
+			f, err := staticFS.Open(path)
+			if err != nil {
+				c.FileFromFS("index.html", staticFS)
+				return
+			}
+			f.Close()
+			c.FileFromFS(path, staticFS)
 		})
 	} else {
-		log.Printf("⚠️  Static folder not found at %s - Running in API-only mode", staticPath)
+		log.Printf("⚠️  No static files found - Running in API-only mode")
 	}
 
 	// Lấy port từ environment hoặc mặc định 3000 (unified port)
