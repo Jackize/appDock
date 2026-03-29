@@ -2,11 +2,14 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type DockerService struct {
@@ -84,7 +87,7 @@ type SystemStats struct {
 	NetworksCount     int     `json:"networksCount"`
 	CPUUsage          float64 `json:"cpuUsage"`
 	MemoryUsage       float64 `json:"memoryUsage"`
-	MemoryTotal       int64   `json:"memoryTotal"`
+	MemoryTotal       uint64  `json:"memoryTotal"`
 }
 
 func (d *DockerService) GetSystemStats() (*SystemStats, error) {
@@ -109,12 +112,30 @@ func (d *DockerService) GetSystemStats() (*SystemStats, error) {
 		networksCount = 0
 	}
 
+	// Machine-level CPU usage (100ms sample interval)
+	cpuPercents, err := cpu.Percent(100*time.Millisecond, false)
+	cpuUsage := 0.0
+	if err == nil && len(cpuPercents) > 0 {
+		cpuUsage = cpuPercents[0]
+	}
+
+	// Machine-level memory usage
+	vmStat, err := mem.VirtualMemory()
+	memoryUsage := 0.0
+	memoryTotal := uint64(0)
+	if err == nil {
+		memoryUsage = vmStat.UsedPercent
+		memoryTotal = vmStat.Total
+	}
+
 	return &SystemStats{
 		ContainersRunning: info.ContainersRunning,
 		ContainersStopped: info.ContainersStopped,
 		ImagesCount:       info.Images,
 		VolumesCount:      volumesCount,
 		NetworksCount:     networksCount,
-		MemoryTotal:       info.MemTotal,
+		MemoryTotal:       uint64(memoryTotal),
+		CPUUsage:          cpuUsage,
+		MemoryUsage:       memoryUsage,
 	}, nil
 }

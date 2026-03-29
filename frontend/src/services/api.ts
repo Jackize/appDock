@@ -1,3 +1,4 @@
+import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import type {
   Container,
   ContainerDetail,
@@ -8,7 +9,6 @@ import type {
   SystemStats,
   Volume,
 } from "@/types";
-import { getAuthToken, useAuthStore } from "@/stores/authStore";
 
 const API_BASE = "/api";
 
@@ -23,7 +23,7 @@ export class AuthError extends Error {
 async function fetchAPI<T>(
   endpoint: string,
   options?: RequestInit,
-  skipAuth = false
+  skipAuth = false,
 ): Promise<T> {
   const token = getAuthToken();
   const headers: HeadersInit = {
@@ -85,13 +85,17 @@ export const authAPI = {
   // Login (public endpoint) - password được hash SHA-256 trước khi gửi
   login: async (data: LoginRequest) => {
     const hashedPassword = await hashPassword(data.password);
-    return fetchAPI<LoginResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({
-        username: data.username,
-        password: hashedPassword,
-      }),
-    }, true);
+    return fetchAPI<LoginResponse>(
+      "/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          username: data.username,
+          password: hashedPassword,
+        }),
+      },
+      true,
+    );
   },
 
   // Refresh token (requires auth)
@@ -104,7 +108,10 @@ export const authAPI = {
   getMe: () => fetchAPI<{ username: string }>("/auth/me"),
 
   // Change password (requires auth) - passwords được hash SHA-256 trước khi gửi
-  changePassword: async (data: { currentPassword: string; newPassword: string }) => {
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+  }) => {
     const [hashedCurrentPassword, hashedNewPassword] = await Promise.all([
       hashPassword(data.currentPassword),
       hashPassword(data.newPassword),

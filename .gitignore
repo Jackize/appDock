@@ -38,3 +38,17 @@ coverage/
 *.test
 *.out
 go.work
+
+# Compiled binaries
+backend/appdock
+backend/appdock-*
+
+# Frontend build artifacts embedded into backend (keep placeholder only)
+backend/static/*
+!backend/static/.placeholder
+
+# Frontend type build artifacts
+frontend/tsconfig.tsbuildinfo
+frontend/tsconfig.node.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts

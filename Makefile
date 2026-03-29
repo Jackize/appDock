@@ -32,6 +32,19 @@ install: ## Cài đặt dependencies (dev mode)
 	cd frontend && npm install
 	@echo "✅ Installation complete!"
 
+build-frontend: ## Build frontend and copy assets to backend/static
+	@echo "🔨 Building frontend..."
+	cd frontend && npm run build
+	@echo "📦 Copying assets to backend/static..."
+	cp -r frontend/dist/. backend/static/
+
+build-binary: ## Compile Go binary only (BINARY=name GOOS=os GOARCH=arch)
+	@echo "⚙️  Compiling binary..."
+	cd backend && GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-s -w" -o $(or $(BINARY),appdock) .
+	@echo "✅ Done! Run with: ./backend/$(or $(BINARY),appdock)"
+
+build-local: build-frontend build-binary ## Build frontend + binary (BINARY=name GOOS=os GOARCH=arch)
+
 dev: ## Chạy development mode (local)
 	@echo "🚀 Starting development servers..."
 	@echo "Backend: http://localhost:8080"
@@ -39,7 +52,7 @@ dev: ## Chạy development mode (local)
 	@make -j2 dev-backend dev-frontend
 
 dev-backend:
-	cd backend && PORT=8080 go run main.go
+	cd backend && go run main.go
 
 dev-frontend:
 	cd frontend && npm run dev
