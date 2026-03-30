@@ -10,6 +10,7 @@ import {
   Image,
   MemoryStick,
   Network,
+  Thermometer,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -29,13 +30,14 @@ const getTimeLabel = () =>
     second: "2-digit",
   });
 
-type ChartPoint = { time: string; cpu: number; memory: number };
+type ChartPoint = { time: string; cpu: number; memory: number; temp: number | null };
 
 const buildInitialChart = (): ChartPoint[] =>
   Array.from({ length: 20 }, () => ({
     time: getTimeLabel(),
     cpu: 0,
     memory: 0,
+    temp: null,
   }));
 
 export function Dashboard() {
@@ -52,6 +54,7 @@ export function Dashboard() {
         time: getTimeLabel(),
         cpu: parseFloat(stats.cpuUsage.toFixed(1)),
         memory: parseFloat(stats.memoryUsage.toFixed(1)),
+        temp: stats.cpuTemperature != null ? parseFloat(stats.cpuTemperature.toFixed(1)) : null,
       },
     ]);
   }, [stats]);
@@ -140,7 +143,7 @@ export function Dashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* CPU Usage Chart */}
         <Card>
           <CardHeader>
@@ -258,6 +261,77 @@ export function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* CPU Temperature Chart */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Thermometer className="w-5 h-5 text-orange-500" />
+              <CardTitle>Nhiệt độ CPU</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              {chartData.some((d) => d.temp !== null) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient
+                        id="tempGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2d353f" />
+                    <XAxis
+                      dataKey="time"
+                      stroke="#64748b"
+                      fontSize={10}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      stroke="#64748b"
+                      fontSize={12}
+                      unit="°C"
+                      domain={[0, 100]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1a1f26",
+                        border: "1px solid #2d353f",
+                        borderRadius: "8px",
+                      }}
+                      labelStyle={{ color: "#f1f5f9" }}
+                      formatter={(value: number) => [`${value}°C`, "Temp"]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="temp"
+                      stroke="#f97316"
+                      fillOpacity={1}
+                      fill="url(#tempGradient)"
+                      strokeWidth={2}
+                      connectNulls
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-text-muted">
+                  <div className="text-center">
+                    <Thermometer className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Không có dữ liệu nhiệt độ</p>
+                    <p className="text-sm">Cần cài đặt lm-sensors</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent containers */}
@@ -321,7 +395,7 @@ export function Dashboard() {
             <CardTitle>Thông tin hệ thống</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="p-3 rounded-lg bg-background-tertiary">
                 <p className="text-sm text-text-secondary">Bộ nhớ tổng</p>
                 <p className="text-lg font-semibold text-text-primary">
@@ -344,6 +418,25 @@ export function Dashboard() {
                 <p className="text-sm text-text-secondary">Images</p>
                 <p className="text-lg font-semibold text-text-primary">
                   {stats.imagesCount}
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-background-tertiary">
+                <div className="flex items-center gap-2">
+                  <Thermometer className="w-4 h-4 text-orange-500" />
+                  <p className="text-sm text-text-secondary">CPU Temp</p>
+                </div>
+                <p className={`text-lg font-semibold ${
+                  stats.cpuTemperature != null
+                    ? stats.cpuTemperature > 80
+                      ? "text-red-500"
+                      : stats.cpuTemperature > 60
+                      ? "text-orange-500"
+                      : "text-green-500"
+                    : "text-text-muted"
+                }`}>
+                  {stats.cpuTemperature != null
+                    ? `${stats.cpuTemperature.toFixed(1)}°C`
+                    : "N/A"}
                 </p>
               </div>
             </div>
