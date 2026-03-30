@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/sensors"
 )
@@ -89,7 +90,13 @@ type SystemStats struct {
 	CPUUsage          float64  `json:"cpuUsage"`
 	MemoryUsage       float64  `json:"memoryUsage"`
 	MemoryTotal       uint64   `json:"memoryTotal"`
+	MemoryUsed        uint64   `json:"memoryUsed"`
+	MemoryFree        uint64   `json:"memoryFree"`
+	MemoryCached      uint64   `json:"memoryCached"`
 	CPUTemperature    *float64 `json:"cpuTemperature,omitempty"`
+	DiskUsage         float64  `json:"diskUsage"`
+	DiskUsed          uint64   `json:"diskUsed"`
+	DiskTotal         uint64   `json:"diskTotal"`
 }
 
 func (d *DockerService) GetSystemStats() (*SystemStats, error) {
@@ -125,9 +132,15 @@ func (d *DockerService) GetSystemStats() (*SystemStats, error) {
 	vmStat, err := mem.VirtualMemory()
 	memoryUsage := 0.0
 	memoryTotal := uint64(0)
+	memoryUsed := uint64(0)
+	memoryFree := uint64(0)
+	memoryCached := uint64(0)
 	if err == nil {
 		memoryUsage = vmStat.UsedPercent
 		memoryTotal = vmStat.Total
+		memoryUsed = vmStat.Used
+		memoryFree = vmStat.Free
+		memoryCached = vmStat.Cached + vmStat.Buffers
 	}
 
 	// CPU temperature (requires lm-sensors on Linux)
@@ -155,15 +168,32 @@ func (d *DockerService) GetSystemStats() (*SystemStats, error) {
 		}
 	}
 
+	// Disk usage (root partition)
+	diskUsage := 0.0
+	diskUsed := uint64(0)
+	diskTotal := uint64(0)
+	diskStat, err := disk.Usage("/")
+	if err == nil {
+		diskUsage = diskStat.UsedPercent
+		diskUsed = diskStat.Used
+		diskTotal = diskStat.Total
+	}
+
 	return &SystemStats{
 		ContainersRunning: info.ContainersRunning,
 		ContainersStopped: info.ContainersStopped,
 		ImagesCount:       info.Images,
 		VolumesCount:      volumesCount,
 		NetworksCount:     networksCount,
-		MemoryTotal:       uint64(memoryTotal),
+		MemoryTotal:       memoryTotal,
+		MemoryUsed:        memoryUsed,
+		MemoryFree:        memoryFree,
+		MemoryCached:      memoryCached,
 		CPUUsage:          cpuUsage,
 		MemoryUsage:       memoryUsage,
 		CPUTemperature:    cpuTemp,
+		DiskUsage:         diskUsage,
+		DiskUsed:          diskUsed,
+		DiskTotal:         diskTotal,
 	}, nil
 }

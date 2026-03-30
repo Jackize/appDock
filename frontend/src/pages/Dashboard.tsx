@@ -17,6 +17,10 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -30,14 +34,23 @@ const getTimeLabel = () =>
     second: "2-digit",
   });
 
-type ChartPoint = { time: string; cpu: number; memory: number; temp: number | null };
+type ChartPoint = {
+  time: string;
+  cpu: number;
+  disk: number;
+  memUsed: number;
+  memCached: number;
+  memFree: number;
+};
 
 const buildInitialChart = (): ChartPoint[] =>
   Array.from({ length: 20 }, () => ({
     time: getTimeLabel(),
     cpu: 0,
-    memory: 0,
-    temp: null,
+    disk: 0,
+    memUsed: 0,
+    memCached: 0,
+    memFree: 100,
   }));
 
 export function Dashboard() {
@@ -48,16 +61,35 @@ export function Dashboard() {
   // Append real stats to chart whenever stats refetches
   useEffect(() => {
     if (!stats) return;
+    const total = stats.memoryTotal || 1;
+    const memUsedPct = parseFloat(((stats.memoryUsed / total) * 100).toFixed(1));
+    const memCachedPct = parseFloat(((stats.memoryCached / total) * 100).toFixed(1));
+    const memFreePct = parseFloat((100 - memUsedPct - memCachedPct).toFixed(1));
+
     setChartData((prev) => [
       ...prev.slice(1),
       {
         time: getTimeLabel(),
         cpu: parseFloat(stats.cpuUsage.toFixed(1)),
-        memory: parseFloat(stats.memoryUsage.toFixed(1)),
-        temp: stats.cpuTemperature != null ? parseFloat(stats.cpuTemperature.toFixed(1)) : null,
+        disk: parseFloat(stats.diskUsage.toFixed(1)),
+        memUsed: memUsedPct,
+        memCached: memCachedPct,
+        memFree: Math.max(0, memFreePct),
       },
     ]);
   }, [stats]);
+
+  // Temperature gauge data
+  const tempValue = stats?.cpuTemperature ?? 0;
+  const getTempColor = (temp: number) => {
+    if (temp < 60) return "#3b82f6"; // blue
+    if (temp <= 80) return "#eab308"; // yellow
+    return "#ef4444"; // red
+  };
+  const tempGaugeData = [
+    { name: "temp", value: Math.min(tempValue, 100) },
+    { name: "empty", value: Math.max(0, 100 - tempValue) },
+  ];
 
   const statCards = [
     {
@@ -143,7 +175,7 @@ export function Dashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* CPU Usage Chart */}
         <Card>
           <CardHeader>
@@ -203,28 +235,35 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Memory Usage Chart */}
+        {/* Memory Usage Chart - Stacked Area */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
               <MemoryStick className="w-5 h-5 text-accent-teal" />
               <CardTitle>Sử dụng Memory</CardTitle>
+              {stats && (
+                <span className="text-sm text-text-muted ml-auto">
+                  {formatBytes(stats.memoryTotal)}
+                </span>
+              )}
             </div>
           </CardHeader>
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart data={chartData} stackOffset="none">
                   <defs>
-                    <linearGradient
-                      id="memGradient"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                    <linearGradient id="memUsedGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.3} />
+                    </linearGradient>
+                    <linearGradient id="memCachedGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#eab308" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#eab308" stopOpacity={0.3} />
+                    </linearGradient>
+                    <linearGradient id="memFreeGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0.3} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2d353f" />
@@ -247,13 +286,47 @@ export function Dashboard() {
                       borderRadius: "8px",
                     }}
                     labelStyle={{ color: "#f1f5f9" }}
+                    formatter={(value: number, name: string) => {
+                      const labels: Record<string, string> = {
+                        memUsed: "Used",
+                        memCached: "Cached",
+                        memFree: "Free",
+                      };
+                      return [`${value}%`, labels[name] || name];
+                    }}
+                  />
+                  <Legend
+                    formatter={(value) => {
+                      const labels: Record<string, string> = {
+                        memUsed: "Used",
+                        memCached: "Cached",
+                        memFree: "Free",
+                      };
+                      return labels[value] || value;
+                    }}
                   />
                   <Area
                     type="monotone"
-                    dataKey="memory"
-                    stroke="#14b8a6"
-                    fillOpacity={1}
-                    fill="url(#memGradient)"
+                    dataKey="memUsed"
+                    stackId="1"
+                    stroke="#ef4444"
+                    fill="url(#memUsedGradient)"
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="memCached"
+                    stackId="1"
+                    stroke="#eab308"
+                    fill="url(#memCachedGradient)"
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="memFree"
+                    stackId="1"
+                    stroke="#22c55e"
+                    fill="url(#memFreeGradient)"
                     strokeWidth={2}
                   />
                 </AreaChart>
@@ -262,7 +335,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* CPU Temperature Chart */}
+        {/* CPU Temperature Gauge */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -272,53 +345,55 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              {chartData.some((d) => d.temp !== null) ? (
+              {stats?.cpuTemperature != null ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <PieChart>
                     <defs>
-                      <linearGradient
-                        id="tempGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                      <linearGradient id="tempGaugeGradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="60%" stopColor="#eab308" />
+                        <stop offset="100%" stopColor="#ef4444" />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2d353f" />
-                    <XAxis
-                      dataKey="time"
-                      stroke="#64748b"
-                      fontSize={10}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      stroke="#64748b"
-                      fontSize={12}
-                      unit="°C"
-                      domain={[0, 100]}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#1a1f26",
-                        border: "1px solid #2d353f",
-                        borderRadius: "8px",
-                      }}
-                      labelStyle={{ color: "#f1f5f9" }}
-                      formatter={(value: number) => [`${value}°C`, "Temp"]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="temp"
-                      stroke="#f97316"
-                      fillOpacity={1}
-                      fill="url(#tempGradient)"
-                      strokeWidth={2}
-                      connectNulls
-                    />
-                  </AreaChart>
+                    <Pie
+                      data={tempGaugeData}
+                      cx="50%"
+                      cy="70%"
+                      startAngle={180}
+                      endAngle={0}
+                      innerRadius="60%"
+                      outerRadius="90%"
+                      paddingAngle={0}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      <Cell fill={getTempColor(tempValue)} />
+                      <Cell fill="#2d353f" />
+                    </Pie>
+                    <text
+                      x="50%"
+                      y="65%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="text-3xl font-bold"
+                      fill={getTempColor(tempValue)}
+                    >
+                      {tempValue.toFixed(1)}°C
+                    </text>
+                    <text
+                      x="50%"
+                      y="80%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="text-sm"
+                      fill="#64748b"
+                    >
+                      {tempValue < 60 ? "Normal" : tempValue <= 80 ? "Warm" : "Hot"}
+                    </text>
+                    {/* Scale labels */}
+                    <text x="12%" y="72%" textAnchor="middle" fill="#64748b" fontSize={12}>0°C</text>
+                    <text x="88%" y="72%" textAnchor="middle" fill="#64748b" fontSize={12}>100°C</text>
+                  </PieChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-text-muted">
@@ -329,6 +404,88 @@ export function Dashboard() {
                   </div>
                 </div>
               )}
+            </div>
+            {/* Color legend */}
+            {stats?.cpuTemperature != null && (
+              <div className="flex justify-center gap-4 mt-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                  <span className="text-text-muted">&lt;60°C</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  <span className="text-text-muted">60-80°C</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <span className="text-text-muted">&gt;80°C</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Disk Usage Chart */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <HardDrive className="w-5 h-5 text-purple-500" />
+              <CardTitle>Sử dụng Disk</CardTitle>
+              {stats && (
+                <span className="text-sm text-text-muted ml-auto">
+                  {formatBytes(stats.diskUsed)} / {formatBytes(stats.diskTotal)}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient
+                      id="diskGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2d353f" />
+                  <XAxis
+                    dataKey="time"
+                    stroke="#64748b"
+                    fontSize={10}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    stroke="#64748b"
+                    fontSize={12}
+                    unit="%"
+                    domain={[0, 100]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1a1f26",
+                      border: "1px solid #2d353f",
+                      borderRadius: "8px",
+                    }}
+                    labelStyle={{ color: "#f1f5f9" }}
+                    formatter={(value: number) => [`${value}%`, "Disk"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="disk"
+                    stroke="#a855f7"
+                    fillOpacity={1}
+                    fill="url(#diskGradient)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -395,12 +552,33 @@ export function Dashboard() {
             <CardTitle>Thông tin hệ thống</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="p-3 rounded-lg bg-background-tertiary">
-                <p className="text-sm text-text-secondary">Bộ nhớ tổng</p>
+                <p className="text-sm text-text-secondary">Bộ nhớ RAM</p>
                 <p className="text-lg font-semibold text-text-primary">
                   {formatBytes(stats.memoryTotal)}
                 </p>
+              </div>
+              <div className="p-3 rounded-lg bg-background-tertiary">
+                <div className="flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-purple-500" />
+                  <p className="text-sm text-text-secondary">Disk</p>
+                </div>
+                <p className="text-lg font-semibold text-text-primary">
+                  {formatBytes(stats.diskUsed)} / {formatBytes(stats.diskTotal)}
+                </p>
+                <div className="mt-1 w-full bg-background-secondary rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full ${
+                      stats.diskUsage > 90
+                        ? "bg-red-500"
+                        : stats.diskUsage > 70
+                        ? "bg-orange-500"
+                        : "bg-purple-500"
+                    }`}
+                    style={{ width: `${stats.diskUsage}%` }}
+                  />
+                </div>
               </div>
               <div className="p-3 rounded-lg bg-background-tertiary">
                 <p className="text-sm text-text-secondary">Container chạy</p>
