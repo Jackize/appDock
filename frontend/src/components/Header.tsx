@@ -1,17 +1,18 @@
-import { Search, Bell, RefreshCw, User, LogOut, ChevronDown, Key, X, Loader2, Lock } from 'lucide-react'
+import { Bell, RefreshCw, User, LogOut, ChevronDown, Key, X, Loader2, Lock, Cpu, MemoryStick, HardDrive, Thermometer } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/appStore'
 import { useAuthStore } from '@/stores/authStore'
-import { useSystemInfo } from '@/hooks/useDocker'
+import { useSystemInfo, useSystemStats } from '@/hooks/useDocker'
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { authAPI } from '@/services/api'
 
 export function Header() {
   const queryClient = useQueryClient()
-  const { searchQuery, setSearchQuery, addToast } = useAppStore()
+  const { addToast } = useAppStore()
   const { user, authEnabled, logout } = useAuthStore()
   const { data: systemInfo } = useSystemInfo()
+  const { data: stats } = useSystemStats()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -89,19 +90,62 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const getTempColor = (temp: number) => {
+    if (temp < 60) return 'text-blue-500'
+    if (temp <= 80) return 'text-yellow-500'
+    return 'text-red-500'
+  }
+
+  const getUsageColor = (usage: number) => {
+    if (usage < 60) return 'text-green-500'
+    if (usage <= 80) return 'text-yellow-500'
+    return 'text-red-500'
+  }
+
   return (
-    <header className="h-16 bg-background-secondary border-b border-border flex items-center justify-between px-6">
-      {/* Search */}
-      <div className="relative w-96">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-        <input
-          type="text"
-          placeholder="Tìm kiếm containers, images..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="input w-full pl-10"
-        />
-      </div>
+    <header className="h-16 bg-background-secondary border-b border-border flex items-center px-6">
+      {/* Left spacer */}
+      <div className="flex-1" />
+
+      {/* Center - Real-time stats */}
+      {stats && (
+        <div className="flex items-center gap-6">
+          {/* CPU Usage */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
+            <Cpu className="w-4 h-4 text-accent" />
+            <span className={cn('text-sm font-medium', getUsageColor(stats.cpuUsage))}>
+              {stats.cpuUsage.toFixed(1)}%
+            </span>
+          </div>
+
+          {/* RAM Usage */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
+            <MemoryStick className="w-4 h-4 text-teal-500" />
+            <span className={cn('text-sm font-medium', getUsageColor(stats.memoryUsage))}>
+              {stats.memoryUsage.toFixed(1)}%
+            </span>
+          </div>
+
+          {/* Disk Usage */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
+            <HardDrive className="w-4 h-4 text-purple-500" />
+            <span className={cn('text-sm font-medium', getUsageColor(stats.diskUsage))}>
+              {stats.diskUsage.toFixed(1)}%
+            </span>
+          </div>
+
+          {/* CPU Temperature */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
+            <Thermometer className="w-4 h-4 text-orange-500" />
+            <span className={cn('text-sm font-medium', stats.cpuTemperature != null ? getTempColor(stats.cpuTemperature) : 'text-text-muted')}>
+              {stats.cpuTemperature != null ? `${stats.cpuTemperature.toFixed(1)}°C` : 'N/A'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Right spacer */}
+      <div className="flex-1" />
 
       {/* Right side */}
       <div className="flex items-center gap-4">
