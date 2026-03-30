@@ -128,9 +128,19 @@ export const authAPI = {
 
 // ==================== SYSTEM ====================
 
+export interface ChartPoint {
+  time: string;
+  cpu: number;
+  disk: number;
+  memUsed: number;
+  memCached: number;
+  memFree: number;
+}
+
 export const systemAPI = {
   getInfo: () => fetchAPI<SystemInfo>("/system/info"),
   getStats: () => fetchAPI<SystemStats>("/system/stats"),
+  getStatsHistory: () => fetchAPI<ChartPoint[]>("/system/stats/history"),
 };
 
 // ==================== CONTAINERS ====================

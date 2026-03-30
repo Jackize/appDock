@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import { useContainers, useSystemStats } from "@/hooks/useDocker";
+import { useContainers, useSystemStats, useStatsHistory } from "@/hooks/useDocker";
 import { formatBytes } from "@/lib/utils";
 import {
   Activity,
@@ -12,7 +12,6 @@ import {
   Network,
   Thermometer,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -27,12 +26,7 @@ import {
   YAxis,
 } from "recharts";
 
-const getTimeLabel = () =>
-  new Date().toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+const CHART_MAX_POINTS = 20;
 
 type ChartPoint = {
   time: string;
@@ -44,8 +38,8 @@ type ChartPoint = {
 };
 
 const buildInitialChart = (): ChartPoint[] =>
-  Array.from({ length: 20 }, () => ({
-    time: getTimeLabel(),
+  Array.from({ length: CHART_MAX_POINTS }, () => ({
+    time: "",
     cpu: 0,
     disk: 0,
     memUsed: 0,
@@ -56,28 +50,19 @@ const buildInitialChart = (): ChartPoint[] =>
 export function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useSystemStats();
   const { data: containers } = useContainers();
-  const [chartData, setChartData] = useState<ChartPoint[]>(buildInitialChart);
+  const { data: historyData } = useStatsHistory();
 
-  // Append real stats to chart whenever stats refetches
-  useEffect(() => {
-    if (!stats) return;
-    const total = stats.memoryTotal || 1;
-    const memUsedPct = parseFloat(((stats.memoryUsed / total) * 100).toFixed(1));
-    const memCachedPct = parseFloat(((stats.memoryCached / total) * 100).toFixed(1));
-    const memFreePct = parseFloat((100 - memUsedPct - memCachedPct).toFixed(1));
-
-    setChartData((prev) => [
-      ...prev.slice(1),
-      {
-        time: getTimeLabel(),
-        cpu: parseFloat(stats.cpuUsage.toFixed(1)),
-        disk: parseFloat(stats.diskUsage.toFixed(1)),
-        memUsed: memUsedPct,
-        memCached: memCachedPct,
-        memFree: Math.max(0, memFreePct),
-      },
-    ]);
-  }, [stats]);
+  // Use history from backend, pad with empty points if needed
+  const chartData: ChartPoint[] = (() => {
+    if (!historyData || historyData.length === 0) {
+      return buildInitialChart();
+    }
+    if (historyData.length < CHART_MAX_POINTS) {
+      const padding = buildInitialChart().slice(0, CHART_MAX_POINTS - historyData.length);
+      return [...padding, ...historyData];
+    }
+    return historyData.slice(-CHART_MAX_POINTS);
+  })();
 
   // Temperature gauge data
   const tempValue = stats?.cpuTemperature ?? 0;

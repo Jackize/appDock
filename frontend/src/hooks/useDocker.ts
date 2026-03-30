@@ -26,6 +26,14 @@ export function useSystemStats() {
   });
 }
 
+export function useStatsHistory() {
+  return useQuery({
+    queryKey: ["system", "stats", "history"],
+    queryFn: systemAPI.getStatsHistory,
+    refetchInterval: 5000, // Sync with backend collection interval
+  });
+}
+
 // ==================== CONTAINER HOOKS ====================
 
 export function useContainers(all = true) {

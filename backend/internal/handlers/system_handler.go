@@ -9,11 +9,15 @@ import (
 )
 
 type SystemHandler struct {
-	dockerService *services.DockerService
+	dockerService       *services.DockerService
+	statsHistoryService *services.StatsHistoryService
 }
 
-func NewSystemHandler(ds *services.DockerService) *SystemHandler {
-	return &SystemHandler{dockerService: ds}
+func NewSystemHandler(ds *services.DockerService, shs *services.StatsHistoryService) *SystemHandler {
+	return &SystemHandler{
+		dockerService:       ds,
+		statsHistoryService: shs,
+	}
 }
 
 // GetSystemInfo trả về thông tin hệ thống Docker
@@ -34,5 +38,11 @@ func (h *SystemHandler) GetSystemStats(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, stats)
+}
+
+// GetStatsHistory trả về lịch sử thống kê
+func (h *SystemHandler) GetStatsHistory(c *gin.Context) {
+	history := h.statsHistoryService.GetHistory()
+	c.JSON(http.StatusOK, history)
 }
 
