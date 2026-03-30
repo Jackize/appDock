@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"appdock/internal/handlers"
 	"appdock/internal/middleware"
@@ -37,12 +41,24 @@ func main() {
 	// Khởi tạo Auth service
 	authService := services.NewAuthService()
 
+	// Khởi tạo Stats History service
+	dataDir := os.Getenv("APPDOCK_DATA_DIR")
+	if dataDir == "" {
+		dataDir = "./data"
+	}
+	statsHistoryService := services.NewStatsHistoryService(dataDir)
+	defer statsHistoryService.Close()
+
+	// Start stats collection goroutine
+	statsCollectorCtx, statsCollectorCancel := context.WithCancel(context.Background())
+	go collectStats(statsCollectorCtx, dockerService, statsHistoryService)
+
 	// Khởi tạo handlers
 	containerHandler := handlers.NewContainerHandler(dockerService)
 	imageHandler := handlers.NewImageHandler(dockerService)
 	networkHandler := handlers.NewNetworkHandler(dockerService)
 	volumeHandler := handlers.NewVolumeHandler(dockerService)
-	systemHandler := handlers.NewSystemHandler(dockerService)
+	systemHandler := handlers.NewSystemHandler(dockerService, statsHistoryService)
 	authHandler := handlers.NewAuthHandler(authService)
 
 	// Khởi tạo Gin router
@@ -71,6 +87,7 @@ func main() {
 		// System
 		api.GET("/system/info", systemHandler.GetSystemInfo)
 		api.GET("/system/stats", systemHandler.GetSystemStats)
+		api.GET("/system/stats/history", systemHandler.GetStatsHistory)
 
 		// Containers
 		containers := api.Group("/containers")
@@ -174,7 +191,84 @@ func main() {
 	}
 
 	log.Printf("🚀 AppDock đang chạy tại http://localhost:%s", port)
-	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Không thể khởi động server: %v", err)
+
+	// Create HTTP server
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: router,
 	}
+
+	// Graceful shutdown
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Không thể khởi động server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("🛑 Đang tắt server...")
+
+	// Stop stats collector
+	statsCollectorCancel()
+
+	// Shutdown server with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("✅ Server đã tắt")
+}
+
+// collectStats periodically collects system stats and adds to history
+func collectStats(ctx context.Context, ds *services.DockerService, shs *services.StatsHistoryService) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	// Collect immediately on start
+	collectAndAddPoint(ds, shs)
+
+	for {
+		select {
+		case <-ticker.C:
+			collectAndAddPoint(ds, shs)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func collectAndAddPoint(ds *services.DockerService, shs *services.StatsHistoryService) {
+	stats, err := ds.GetSystemStats()
+	if err != nil {
+		return
+	}
+
+	total := float64(stats.MemoryTotal)
+	if total == 0 {
+		total = 1
+	}
+
+	memUsedPct := (float64(stats.MemoryUsed) / total) * 100
+	memCachedPct := (float64(stats.MemoryCached) / total) * 100
+	memFreePct := 100 - memUsedPct - memCachedPct
+	if memFreePct < 0 {
+		memFreePct = 0
+	}
+
+	point := services.ChartPoint{
+		Time:      time.Now().Format("15:04:05"),
+		CPU:       stats.CPUUsage,
+		Disk:      stats.DiskUsage,
+		MemUsed:   memUsedPct,
+		MemCached: memCachedPct,
+		MemFree:   memFreePct,
+	}
+
+	shs.AddPoint(point)
 }
