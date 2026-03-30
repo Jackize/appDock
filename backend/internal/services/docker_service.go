@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/sensors"
 )
 
 type DockerService struct {
@@ -80,14 +81,15 @@ func (d *DockerService) GetSystemInfo() (*SystemInfo, error) {
 // ==================== SYSTEM STATS ====================
 
 type SystemStats struct {
-	ContainersRunning int     `json:"containersRunning"`
-	ContainersStopped int     `json:"containersStopped"`
-	ImagesCount       int     `json:"imagesCount"`
-	VolumesCount      int     `json:"volumesCount"`
-	NetworksCount     int     `json:"networksCount"`
-	CPUUsage          float64 `json:"cpuUsage"`
-	MemoryUsage       float64 `json:"memoryUsage"`
-	MemoryTotal       uint64  `json:"memoryTotal"`
+	ContainersRunning int      `json:"containersRunning"`
+	ContainersStopped int      `json:"containersStopped"`
+	ImagesCount       int      `json:"imagesCount"`
+	VolumesCount      int      `json:"volumesCount"`
+	NetworksCount     int      `json:"networksCount"`
+	CPUUsage          float64  `json:"cpuUsage"`
+	MemoryUsage       float64  `json:"memoryUsage"`
+	MemoryTotal       uint64   `json:"memoryTotal"`
+	CPUTemperature    *float64 `json:"cpuTemperature,omitempty"`
 }
 
 func (d *DockerService) GetSystemStats() (*SystemStats, error) {
@@ -128,6 +130,31 @@ func (d *DockerService) GetSystemStats() (*SystemStats, error) {
 		memoryTotal = vmStat.Total
 	}
 
+	// CPU temperature (requires lm-sensors on Linux)
+	var cpuTemp *float64
+	temps, err := sensors.SensorsTemperatures()
+	if err == nil && len(temps) > 0 {
+		for _, t := range temps {
+			// Look for CPU-related sensors (coretemp, k10temp, etc.)
+			if t.SensorKey == "coretemp_packageid0_input" ||
+				t.SensorKey == "k10temp_tctl_input" ||
+				t.SensorKey == "cpu_thermal_input" ||
+				t.SensorKey == "acpitz_input" {
+				cpuTemp = &t.Temperature
+				break
+			}
+		}
+		// Fallback: use first sensor with "core" or "cpu" in name
+		if cpuTemp == nil {
+			for _, t := range temps {
+				if t.Temperature > 0 {
+					cpuTemp = &t.Temperature
+					break
+				}
+			}
+		}
+	}
+
 	return &SystemStats{
 		ContainersRunning: info.ContainersRunning,
 		ContainersStopped: info.ContainersStopped,
@@ -137,5 +164,6 @@ func (d *DockerService) GetSystemStats() (*SystemStats, error) {
 		MemoryTotal:       uint64(memoryTotal),
 		CPUUsage:          cpuUsage,
 		MemoryUsage:       memoryUsage,
+		CPUTemperature:    cpuTemp,
 	}, nil
 }

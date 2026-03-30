@@ -133,4 +133,5 @@ export interface SystemStats {
   cpuUsage: number;
   memoryUsage: number;
   memoryTotal: number;
+  cpuTemperature?: number;
 }
