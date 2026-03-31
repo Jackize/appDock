@@ -1,8 +1,8 @@
-# 🚀 AppDock - Quản lý Docker hiện đại
+# 🚀 AppDock - Modern Docker Management UI
 
 <div align="center">
   <img src="frontend/public/favicon.svg" alt="AppDock Logo" width="120" />
-  <p><strong>Giao diện quản lý Docker trực quan, hiện đại với phong cách Việt Nam</strong></p>
+  <p><strong>A beautiful, intuitive Docker management interface</strong></p>
   
   ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
   ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -14,98 +14,198 @@
 
 ## ⚡ Quick Start
 
-### 🐳 Cách 1: Docker Run (Nhanh nhất - 1 lệnh duy nhất)
+### Option 1: One-liner Install (Linux - Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install.sh | sudo bash
+```
+
+This will:
+- Download the latest binary for your OS/architecture
+- Install to `/opt/appdock`
+- Create a systemd service (auto-start on boot)
+- Start AppDock on port **8080**
+
+Access UI at **http://localhost:8080**
+
+### Option 2: Docker Run
 
 ```bash
 docker run -d \
   --name appdock \
-  -p 3000:3000 \
+  -p 8080:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   nguyenhao2042/appdock:latest
 ```
 
-🌐 Mở **http://localhost:3000** trong trình duyệt
+Access UI at **http://localhost:8080**
 
-### 📦 Cách 2: Docker Compose
+### Option 3: Docker Compose
 
 ```bash
 # Download docker-compose.yml
-curl -fsSL https://raw.githubusercontent.com/nguyenhao2042/appdock/main/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/docker-compose.yml -o docker-compose.yml
 
-# Chạy
+# Start
 docker compose up -d
 ```
 
-### 🔧 Cách 3: Clone & Build
+### Option 4: Clone & Build
 
 ```bash
-git clone https://github.com/nguyenhao2042/appdock.git
-cd appdock
+git clone https://github.com/Jackize/appDock.git
+cd appDock
 docker compose up -d --build
 ```
 
-🌐 Mở **http://localhost:3000** trong trình duyệt
+Access UI at **http://localhost:8080**
 
 ---
 
-## ✨ Tính năng
+## ✨ Features
 
-- 📊 **Dashboard** - Tổng quan về hệ thống Docker với biểu đồ realtime
-- 📦 **Containers** - Quản lý containers theo nhóm Docker Compose
+- 📊 **Dashboard** - Real-time system overview with charts
+- 📦 **Containers** - Manage containers grouped by Docker Compose project
   - Start, Stop, Restart, Remove
-  - 📋 Xem logs realtime
-  - 💻 Terminal trực tiếp vào container
-- 🖼️ **Images** - Quản lý images
-  - Phân loại images đang sử dụng / không sử dụng
-  - Xóa hàng loạt images không dùng
-- 🌐 **Networks** - Quản lý Docker networks
-- 💾 **Volumes** - Quản lý Docker volumes
+  - 📋 Real-time logs streaming
+  - 💻 Interactive terminal (exec into container)
+- 🖼️ **Images** - Manage Docker images
+  - Filter by used/unused images
+  - Bulk delete unused images
+- 🌐 **Networks** - Manage Docker networks
+- 💾 **Volumes** - Manage Docker volumes
+- 🔐 **Authentication** - JWT-based authentication (optional)
 
 ---
 
-## 🛠️ Commands
+## 📦 Installation
 
-| Command                                       | Mô tả             |
-| --------------------------------------------- | ----------------- |
-| `docker compose up -d`                        | Khởi động AppDock |
-| `docker compose down`                         | Dừng AppDock      |
-| `docker compose logs -f`                      | Xem logs          |
-| `docker compose restart`                      | Khởi động lại     |
-| `docker compose pull && docker compose up -d` | Cập nhật          |
+### Native Installation (Linux/macOS)
 
-### Sử dụng Makefile (optional)
+**Install latest version:**
 
 ```bash
-make help      # Hiển thị trợ giúp
-make start     # Khởi động AppDock
-make stop      # Dừng AppDock
-make logs      # Xem logs
-make clean     # Dọn dẹp
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install.sh | sudo bash
 ```
+
+**Install specific version:**
+
+```bash
+sudo ./install.sh --version v1.0.0
+```
+
+**Check installation status:**
+
+```bash
+./install.sh --status
+```
+
+**Uninstall:**
+
+```bash
+sudo ./install.sh --uninstall
+```
+
+### Service Management (Linux with systemd)
+
+| Command | Description |
+|---------|-------------|
+| `systemctl status appdock` | Check service status |
+| `systemctl start appdock` | Start AppDock |
+| `systemctl stop appdock` | Stop AppDock |
+| `systemctl restart appdock` | Restart AppDock |
+| `journalctl -u appdock -f` | View logs |
+
+### Docker Commands
+
+| Command | Description |
+|---------|-------------|
+| `docker compose up -d` | Start AppDock |
+| `docker compose down` | Stop AppDock |
+| `docker compose logs -f` | View logs |
+| `docker compose restart` | Restart |
+| `docker compose pull && docker compose up -d` | Update |
+
+### Makefile Shortcuts (for development)
+
+```bash
+make help      # Show help
+make start     # Start AppDock
+make stop      # Stop AppDock
+make logs      # View logs
+make clean     # Clean up
+```
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8080` | Server listen port |
+| `APPDOCK_USERNAME` | `admin` | Login username |
+| `APPDOCK_PASSWORD` | `appdock` | Login password |
+| `APPDOCK_JWT_SECRET` | (random) | JWT signing secret |
+| `APPDOCK_AUTH_DISABLED` | `false` | Set `true` to disable authentication |
+
+### Authentication
+
+AppDock includes JWT-based authentication by default.
+
+**Default credentials:**
+- Username: `admin`
+- Password: `appdock`
+
+**Disable authentication** (for trusted environments):
+
+```bash
+# Docker run
+docker run -d \
+  --name appdock \
+  -p 8080:8080 \
+  -e APPDOCK_AUTH_DISABLED=true \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  nguyenhao2042/appdock:latest
+```
+
+**Custom credentials:**
+
+```bash
+docker run -d \
+  --name appdock \
+  -p 8080:8080 \
+  -e APPDOCK_USERNAME=myuser \
+  -e APPDOCK_PASSWORD=mypassword \
+  -e APPDOCK_JWT_SECRET=$(openssl rand -hex 32) \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  nguyenhao2042/appdock:latest
+```
+
+For native installation, edit the systemd service file at `/etc/systemd/system/appdock.service` and run `systemctl daemon-reload && systemctl restart appdock`.
 
 ---
 
 ## 🔧 Development Mode
 
-Nếu bạn muốn develop:
-
-### Yêu cầu
+### Requirements
 
 - Node.js 18+
 - Go 1.21+
-- Docker đang chạy
+- Docker running
 
-### Cài đặt & Chạy
+### Setup & Run
 
 ```bash
-# Cài đặt dependencies
+# Install dependencies
 make install
 
-# Chạy dev mode (backend + frontend)
+# Run dev mode (backend + frontend)
 make dev
 ```
 
-Hoặc chạy riêng từng phần:
+Or run separately:
 
 ```bash
 # Terminal 1 - Backend (port 8080)
@@ -118,7 +218,7 @@ npm install
 npm run dev
 ```
 
-Truy cập **http://localhost:5173**
+Access dev UI at **http://localhost:5173**
 
 ---
 
@@ -126,30 +226,31 @@ Truy cập **http://localhost:5173**
 
 ### Frontend
 
-- **React 18** + **Vite** - Build tool siêu nhanh
+- **React 18** + **Vite** - Fast build tool
 - **TypeScript** - Type safety
-- **Tailwind CSS** - Styling hiện đại
+- **Tailwind CSS** - Modern styling
 - **Radix UI** - Headless UI components
 - **TanStack Query** - Server state management
 - **Zustand** - Client state management
-- **Recharts** - Charts và biểu đồ
+- **Recharts** - Charts and graphs
 
 ### Backend
 
 - **Go (Golang)** - Backend API
 - **Gin** - Web framework
-- **Docker SDK** - Tương tác với Docker Engine
-- **Gorilla WebSocket** - Realtime logs & terminal
+- **Docker SDK** - Docker Engine interaction
+- **Gorilla WebSocket** - Real-time logs & terminal
 
 ---
 
-## 📁 Cấu trúc dự án
+## 📁 Project Structure
 
 ```
 appdock/
 ├── Dockerfile               # Unified Dockerfile (single image)
 ├── docker-compose.yml       # Production (single container)
 ├── docker-compose.dev.yml   # Development (2 containers)
+├── install.sh               # Native installer script
 ├── Makefile                 # Build automation
 │
 ├── backend/                 # Golang Backend
@@ -157,7 +258,8 @@ appdock/
 │   ├── main.go
 │   └── internal/
 │       ├── handlers/        # HTTP & WebSocket handlers
-│       └── services/        # Docker service
+│       ├── middleware/      # Auth middleware
+│       └── services/        # Docker & auth services
 │
 ├── frontend/                # React Frontend
 │   ├── Dockerfile           # Frontend-only Dockerfile (dev)
@@ -177,76 +279,84 @@ appdock/
 
 ---
 
-## 🎨 Thiết kế
+## 🎨 Design
 
-- **Dark Theme** - Background xám đen (#0f1419)
-- **Blue/Teal Accent** - Màu accent (#0ea5e9, #14b8a6)
-- **Be Vietnam Pro** - Font chữ tiếng Việt đẹp
-- **Terminal-style** - Logs và Terminal với theme Tokyo Night
+- **Dark Theme** - Dark gray background (#0f1419)
+- **Blue/Teal Accent** - Accent colors (#0ea5e9, #14b8a6)
+- **Be Vietnam Pro** - Clean Vietnamese-friendly font
+- **Terminal-style** - Logs and Terminal with Tokyo Night theme
 
 ---
 
 ## 📖 API Endpoints
 
+### Authentication
+
+- `GET /api/auth/status` - Auth status (public)
+- `POST /api/auth/login` - Login (public)
+- `POST /api/auth/refresh` - Refresh JWT token
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/change-password` - Change password
+
 ### System
 
-- `GET /api/system/info` - Thông tin Docker
-- `GET /api/system/stats` - Thống kê hệ thống
+- `GET /api/system/info` - Docker info
+- `GET /api/system/stats` - System statistics
 
 ### Containers
 
-- `GET /api/containers` - Danh sách containers
-- `GET /api/containers/:id` - Chi tiết container
-- `POST /api/containers/:id/start` - Khởi động
-- `POST /api/containers/:id/stop` - Dừng
-- `POST /api/containers/:id/restart` - Khởi động lại
-- `DELETE /api/containers/:id` - Xóa
-- `GET /api/containers/:id/logs` - Xem logs
-- `GET /api/containers/:id/stats` - Thống kê
+- `GET /api/containers` - List containers
+- `GET /api/containers/:id` - Container details
+- `POST /api/containers/:id/start` - Start container
+- `POST /api/containers/:id/stop` - Stop container
+- `POST /api/containers/:id/restart` - Restart container
+- `DELETE /api/containers/:id` - Remove container
+- `GET /api/containers/:id/logs` - Get logs
+- `GET /api/containers/:id/stats` - Container stats
 
 ### WebSocket
 
-- `WS /ws/containers/:id/logs` - Stream logs realtime
-- `WS /ws/containers/:id/exec` - Terminal exec
+- `WS /ws/containers/:id/logs?token=<jwt>` - Stream logs real-time
+- `WS /ws/containers/:id/exec?token=<jwt>` - Terminal exec
 
 ### Images
 
-- `GET /api/images` - Danh sách images
-- `DELETE /api/images/:id` - Xóa image
-- `DELETE /api/images/bulk` - Xóa nhiều images
+- `GET /api/images` - List images
+- `DELETE /api/images/:id` - Delete image
+- `DELETE /api/images/bulk` - Bulk delete images
 - `POST /api/images/pull` - Pull image
 
 ### Networks & Volumes
 
-- `GET /api/networks` - Danh sách networks
-- `GET /api/volumes` - Danh sách volumes
+- `GET /api/networks` - List networks
+- `GET /api/volumes` - List volumes
 
 ---
 
-## 🚢 CI/CD với GitHub Actions
+## 🚢 CI/CD with GitHub Actions
 
-Image được tự động build và push lên Docker Hub khi tạo Release trên GitHub.
+Docker images are automatically built and pushed to Docker Hub when creating a Release on GitHub.
 
 ### Setup GitHub Secrets
 
-Vào **Settings → Secrets and variables → Actions** và thêm:
+Go to **Settings → Secrets and variables → Actions** and add:
 
-| Secret | Mô tả |
-|--------|-------|
+| Secret | Description |
+|--------|-------------|
 | `DOCKERHUB_USERNAME` | Docker Hub username |
-| `DOCKERHUB_TOKEN` | Docker Hub Access Token (tạo tại https://hub.docker.com/settings/security) |
+| `DOCKERHUB_TOKEN` | Docker Hub Access Token (create at https://hub.docker.com/settings/security) |
 
-### Tạo Release
+### Create a Release
 
-1. Vào **Releases → Create a new release**
-2. Tạo tag mới (ví dụ: `v1.0.0`)
-3. Điền release notes
+1. Go to **Releases → Create a new release**
+2. Create a new tag (e.g., `v1.0.0`)
+3. Fill in release notes
 4. Click **Publish release**
 
-GitHub Actions sẽ tự động:
-- Build Docker image cho cả AMD64 và ARM64
-- Push lên Docker Hub với tags: `latest`, `1.0.0`, `1.0`, `1`
-- Cập nhật README trên Docker Hub
+GitHub Actions will automatically:
+- Build Docker image for both AMD64 and ARM64
+- Push to Docker Hub with tags: `latest`, `1.0.0`, `1.0`, `1`
+- Build native binaries for Linux/macOS
 
 ### Manual Build (Local)
 
@@ -254,11 +364,11 @@ GitHub Actions sẽ tự động:
 # Build image
 docker build -t appdock:latest .
 
-# Tag với Docker Hub username
+# Tag with Docker Hub username
 docker tag appdock:latest your-username/appdock:latest
 docker tag appdock:latest your-username/appdock:v1.0.0
 
-# Push lên Docker Hub
+# Push to Docker Hub
 docker push your-username/appdock:latest
 docker push your-username/appdock:v1.0.0
 ```
@@ -266,10 +376,10 @@ docker push your-username/appdock:v1.0.0
 ### Multi-architecture Build (Local)
 
 ```bash
-# Tạo builder (chỉ cần 1 lần)
+# Create builder (only needed once)
 docker buildx create --name mybuilder --use
 
-# Build và push cho cả Intel/AMD và Apple Silicon
+# Build and push for both Intel/AMD and Apple Silicon
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   -t your-username/appdock:latest \
@@ -279,27 +389,31 @@ docker buildx build \
 
 ---
 
-## 🔒 Bảo mật
+## 🔒 Security
 
-⚠️ **Lưu ý**: AppDock cần quyền truy cập Docker socket (`/var/run/docker.sock`). Điều này cho phép quản lý toàn bộ Docker trên máy.
+⚠️ **Important**: AppDock requires access to Docker socket (`/var/run/docker.sock`). This allows full control of Docker on the host machine.
 
-- Chỉ chạy trên môi trường tin cậy
-- Không expose ra internet công cộng
-- Sử dụng firewall nếu cần
+**Recommendations:**
+- Only run in trusted environments
+- Do not expose to the public internet without additional protection
+- Use a firewall if needed
+- Enable authentication (default) in production
+- Use strong passwords and JWT secrets
 
 ---
 
 ## 📝 Roadmap
 
-- [x] Real-time logs với WebSocket
+- [x] Real-time logs with WebSocket
 - [x] Container exec terminal
 - [x] Docker Compose project grouping
 - [x] Bulk delete images
-- [ ] Multi-language (Tiếng Anh)
+- [x] JWT Authentication
+- [x] Native binary installation
+- [ ] Multi-language support
 - [ ] Dark/Light theme toggle
 - [ ] Container resource limits
-- [ ] Image build từ Dockerfile
-- [ ] Authentication
+- [ ] Image build from Dockerfile
 
 ---
 
@@ -311,7 +425,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📜 License
 
-MIT License - Tự do sử dụng và phát triển!
+MIT License - Free to use and modify!
 
 ---
 
