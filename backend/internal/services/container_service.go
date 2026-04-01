@@ -26,13 +26,23 @@ type PortMapping struct {
 	IP          string `json:"ip"`
 }
 
-func (d *DockerService) ListContainers(all bool) ([]ContainerInfo, error) {
+func (d *DockerService) ListContainers(all bool) (result []ContainerInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	containers, err := d.client.ContainerList(d.ctx, container.ListOptions{All: all})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
-	result := make([]ContainerInfo, 0, len(containers))
+	result = make([]ContainerInfo, 0, len(containers))
 	for _, c := range containers {
 		name := ""
 		if len(c.Names) > 0 {
@@ -97,10 +107,20 @@ type MountInfo struct {
 	RW          bool   `json:"rw"`
 }
 
-func (d *DockerService) GetContainer(id string) (*ContainerDetail, error) {
+func (d *DockerService) GetContainer(id string) (result *ContainerDetail, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	c, err := d.client.ContainerInspect(d.ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	ports := make([]PortMapping, 0)
@@ -176,25 +196,75 @@ func (d *DockerService) GetContainer(id string) (*ContainerDetail, error) {
 	}, nil
 }
 
-func (d *DockerService) StartContainer(id string) error {
-	return d.client.ContainerStart(d.ctx, id, container.StartOptions{})
+func (d *DockerService) StartContainer(id string) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
+	err = d.client.ContainerStart(d.ctx, id, container.StartOptions{})
+	return d.handleError(err)
 }
 
-func (d *DockerService) StopContainer(id string) error {
+func (d *DockerService) StopContainer(id string) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
 	timeout := 10
-	return d.client.ContainerStop(d.ctx, id, container.StopOptions{Timeout: &timeout})
+	err = d.client.ContainerStop(d.ctx, id, container.StopOptions{Timeout: &timeout})
+	return d.handleError(err)
 }
 
-func (d *DockerService) RestartContainer(id string) error {
+func (d *DockerService) RestartContainer(id string) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
 	timeout := 10
-	return d.client.ContainerRestart(d.ctx, id, container.StopOptions{Timeout: &timeout})
+	err = d.client.ContainerRestart(d.ctx, id, container.StopOptions{Timeout: &timeout})
+	return d.handleError(err)
 }
 
-func (d *DockerService) RemoveContainer(id string, force bool) error {
-	return d.client.ContainerRemove(d.ctx, id, container.RemoveOptions{Force: force})
+func (d *DockerService) RemoveContainer(id string, force bool) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
+	err = d.client.ContainerRemove(d.ctx, id, container.RemoveOptions{Force: force})
+	return d.handleError(err)
 }
 
-func (d *DockerService) GetContainerLogs(id string, tail string) (string, error) {
+func (d *DockerService) GetContainerLogs(id string, tail string) (result string, err error) {
+	if !d.IsConnected() {
+		return "", ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = ""
+			err = ErrDockerNotConnected
+		}
+	}()
 	options := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -204,13 +274,13 @@ func (d *DockerService) GetContainerLogs(id string, tail string) (string, error)
 
 	reader, err := d.client.ContainerLogs(d.ctx, id, options)
 	if err != nil {
-		return "", err
+		return "", d.handleError(err)
 	}
 	defer reader.Close()
 
 	logs, err := io.ReadAll(reader)
 	if err != nil {
-		return "", err
+		return "", d.handleError(err)
 	}
 
 	return string(logs), nil
@@ -251,10 +321,20 @@ type StatsJSON struct {
 	} `json:"networks"`
 }
 
-func (d *DockerService) GetContainerStats(id string) (*ContainerStats, error) {
+func (d *DockerService) GetContainerStats(id string) (result *ContainerStats, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	stats, err := d.client.ContainerStats(d.ctx, id, false)
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 	defer stats.Body.Close()
 
@@ -298,7 +378,17 @@ func (d *DockerService) GetContainerStats(id string) (*ContainerStats, error) {
 	}, nil
 }
 
-func (d *DockerService) StreamContainerLogs(id string) (io.ReadCloser, error) {
+func (d *DockerService) StreamContainerLogs(id string) (result io.ReadCloser, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	options := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -307,7 +397,11 @@ func (d *DockerService) StreamContainerLogs(id string) (io.ReadCloser, error) {
 		Timestamps: true,
 	}
 
-	return d.client.ContainerLogs(d.ctx, id, options)
+	result, err = d.client.ContainerLogs(d.ctx, id, options)
+	if err != nil {
+		return nil, d.handleError(err)
+	}
+	return result, nil
 }
 
 // HijackedResponse wraps the Docker hijacked connection
@@ -325,7 +419,17 @@ func (h *HijackedResponse) Close() error {
 }
 
 // CreateExec tạo exec instance trong container
-func (d *DockerService) CreateExec(containerID string) (string, error) {
+func (d *DockerService) CreateExec(containerID string) (result string, err error) {
+	if !d.IsConnected() {
+		return "", ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = ""
+			err = ErrDockerNotConnected
+		}
+	}()
 	execConfig := container.ExecOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
@@ -336,19 +440,29 @@ func (d *DockerService) CreateExec(containerID string) (string, error) {
 
 	resp, err := d.client.ContainerExecCreate(d.ctx, containerID, execConfig)
 	if err != nil {
-		return "", err
+		return "", d.handleError(err)
 	}
 
 	return resp.ID, nil
 }
 
 // AttachExec attach vào exec instance
-func (d *DockerService) AttachExec(execID string) (*HijackedResponse, error) {
+func (d *DockerService) AttachExec(execID string) (result *HijackedResponse, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	resp, err := d.client.ContainerExecAttach(d.ctx, execID, container.ExecStartOptions{
 		Tty: true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	// Tạo pipe để đọc output

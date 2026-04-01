@@ -1,8 +1,8 @@
-import { Bell, RefreshCw, User, LogOut, ChevronDown, Key, X, Loader2, Lock, Cpu, MemoryStick, HardDrive, Thermometer } from 'lucide-react'
+import { Bell, RefreshCw, User, LogOut, ChevronDown, Key, X, Loader2, Lock, Cpu, MemoryStick, HardDrive, Thermometer, AlertTriangle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/appStore'
 import { useAuthStore } from '@/stores/authStore'
-import { useSystemInfo, useSystemStats } from '@/hooks/useDocker'
+import { useDockerStatus, useSystemInfo, useSystemStats } from '@/hooks/useDocker'
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { authAPI } from '@/services/api'
@@ -11,8 +11,12 @@ export function Header() {
   const queryClient = useQueryClient()
   const { addToast } = useAppStore()
   const { user, authEnabled, logout } = useAuthStore()
-  const { data: systemInfo } = useSystemInfo()
+  const { data: dockerStatus } = useDockerStatus()
+  const { data: systemInfoResponse } = useSystemInfo()
   const { data: stats } = useSystemStats()
+  
+  const dockerAvailable = dockerStatus?.connected ?? true
+  const systemInfo = systemInfoResponse?.info
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -149,12 +153,19 @@ export function Header() {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
-        {/* Docker info */}
-        {systemInfo && (
+        {/* Docker status */}
+        {dockerAvailable ? (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
             <div className="w-2 h-2 rounded-full bg-status-running animate-pulse" />
             <span className="text-sm text-text-secondary">
-              Docker {systemInfo.dockerVersion}
+              Docker {systemInfo?.dockerVersion || 'N/A'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-status-stopped/10 border border-status-stopped/30">
+            <AlertTriangle className="w-4 h-4 text-status-stopped" />
+            <span className="text-sm text-status-stopped font-medium">
+              Docker Offline
             </span>
           </div>
         )}

@@ -29,13 +29,23 @@ type IPAMConfig struct {
 	Gateway string `json:"gateway"`
 }
 
-func (d *DockerService) ListNetworks() ([]NetworkInfo, error) {
+func (d *DockerService) ListNetworks() (result []NetworkInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	networks, err := d.client.NetworkList(d.ctx, network.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
-	result := make([]NetworkInfo, 0, len(networks))
+	result = make([]NetworkInfo, 0, len(networks))
 	for _, net := range networks {
 		id := net.ID
 		if len(id) > 12 {
@@ -75,10 +85,20 @@ func (d *DockerService) ListNetworks() ([]NetworkInfo, error) {
 	return result, nil
 }
 
-func (d *DockerService) GetNetwork(id string) (*NetworkInfo, error) {
+func (d *DockerService) GetNetwork(id string) (result *NetworkInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	net, err := d.client.NetworkInspect(d.ctx, id, network.InspectOptions{})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	netID := net.ID
@@ -127,7 +147,17 @@ type CreateNetworkRequest struct {
 	Attachable bool   `json:"attachable"`
 }
 
-func (d *DockerService) CreateNetwork(req CreateNetworkRequest) (string, error) {
+func (d *DockerService) CreateNetwork(req CreateNetworkRequest) (result string, err error) {
+	if !d.IsConnected() {
+		return "", ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = ""
+			err = ErrDockerNotConnected
+		}
+	}()
 	driver := req.Driver
 	if driver == "" {
 		driver = "bridge"
@@ -139,12 +169,22 @@ func (d *DockerService) CreateNetwork(req CreateNetworkRequest) (string, error) 
 		Attachable: req.Attachable,
 	})
 	if err != nil {
-		return "", err
+		return "", d.handleError(err)
 	}
 
 	return resp.ID[:12], nil
 }
 
-func (d *DockerService) RemoveNetwork(id string) error {
-	return d.client.NetworkRemove(d.ctx, id)
+func (d *DockerService) RemoveNetwork(id string) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
+	err = d.client.NetworkRemove(d.ctx, id)
+	return d.handleError(err)
 }

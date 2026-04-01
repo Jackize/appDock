@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"appdock/internal/services"
@@ -20,14 +21,33 @@ func NewSystemHandler(ds *services.DockerService, shs *services.StatsHistoryServ
 	}
 }
 
-// GetSystemInfo trả về thông tin hệ thống Docker
+// GetSystemInfo returns Docker system info (or basic info if Docker is not available)
 func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 	info, err := h.dockerService.GetSystemInfo()
 	if err != nil {
+		if errors.Is(err, services.ErrDockerNotConnected) {
+			// Return basic system info when Docker is not available
+			basicInfo := h.dockerService.GetBasicSystemInfo()
+			c.JSON(http.StatusOK, gin.H{
+				"dockerAvailable": false,
+				"info":            basicInfo,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, info)
+	c.JSON(http.StatusOK, gin.H{
+		"dockerAvailable": true,
+		"info":            info,
+	})
+}
+
+// GetDockerStatus returns Docker connection status
+func (h *SystemHandler) GetDockerStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"connected": h.dockerService.IsConnected(),
+	})
 }
 
 // GetSystemStats trả về thống kê hệ thống

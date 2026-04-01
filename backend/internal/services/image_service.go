@@ -19,16 +19,26 @@ type ImageInfo struct {
 	Containers  []string          `json:"containers"` // Container names using this image
 }
 
-func (d *DockerService) ListImages() ([]ImageInfo, error) {
+func (d *DockerService) ListImages() (result []ImageInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	images, err := d.client.ImageList(d.ctx, image.ListOptions{All: true})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	// Lấy danh sách containers để kiểm tra image nào đang được sử dụng
 	containers, err := d.client.ContainerList(d.ctx, container.ListOptions{All: true})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	// Tạo map từ imageID -> list of container names
@@ -51,7 +61,7 @@ func (d *DockerService) ListImages() ([]ImageInfo, error) {
 		imageUsage[c.Image] = append(imageUsage[c.Image], containerName)
 	}
 
-	result := make([]ImageInfo, 0, len(images))
+	result = make([]ImageInfo, 0, len(images))
 	for _, img := range images {
 		id := img.ID
 		if len(id) > 19 {
@@ -95,10 +105,20 @@ func (d *DockerService) ListImages() ([]ImageInfo, error) {
 	return result, nil
 }
 
-func (d *DockerService) GetImage(id string) (*ImageInfo, error) {
+func (d *DockerService) GetImage(id string) (result *ImageInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	img, err := d.client.ImageInspect(d.ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	imgID := img.ID
@@ -122,21 +142,39 @@ func (d *DockerService) GetImage(id string) (*ImageInfo, error) {
 	}, nil
 }
 
-func (d *DockerService) RemoveImage(id string, force bool) error {
-	_, err := d.client.ImageRemove(d.ctx, id, image.RemoveOptions{Force: force})
-	return err
+func (d *DockerService) RemoveImage(id string, force bool) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
+	_, err = d.client.ImageRemove(d.ctx, id, image.RemoveOptions{Force: force})
+	return d.handleError(err)
 }
 
-func (d *DockerService) PullImage(refStr string) error {
+func (d *DockerService) PullImage(refStr string) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
 	reader, err := d.client.ImagePull(d.ctx, refStr, image.PullOptions{})
 	if err != nil {
-		return err
+		return d.handleError(err)
 	}
 	defer reader.Close()
 
 	// Đọc hết response để hoàn thành pull
 	_, err = io.Copy(io.Discard, reader)
-	return err
+	return d.handleError(err)
 }
 
 // BulkDeleteResult kết quả xóa nhiều images
@@ -153,8 +191,17 @@ type FailedItem struct {
 }
 
 // RemoveImages xóa nhiều images cùng lúc
-func (d *DockerService) RemoveImages(ids []string, force bool) *BulkDeleteResult {
-	result := &BulkDeleteResult{
+func (d *DockerService) RemoveImages(ids []string, force bool) (result *BulkDeleteResult, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
+	result = &BulkDeleteResult{
 		Success: make([]string, 0),
 		Failed:  make([]FailedItem, 0),
 		Total:   len(ids),
@@ -173,5 +220,5 @@ func (d *DockerService) RemoveImages(ids []string, force bool) *BulkDeleteResult
 	}
 
 	result.Deleted = len(result.Success)
-	return result
+	return result, nil
 }

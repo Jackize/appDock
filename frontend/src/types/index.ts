@@ -124,6 +124,15 @@ export interface SystemInfo {
   cpus: number;
 }
 
+export interface SystemInfoResponse {
+  dockerAvailable: boolean;
+  info: SystemInfo;
+}
+
+export interface DockerStatusResponse {
+  connected: boolean;
+}
+
 export interface SystemStats {
   containersRunning: number;
   containersStopped: number;
