@@ -19,13 +19,23 @@ type VolumeUsage struct {
 	RefCount int64 `json:"refCount"`
 }
 
-func (d *DockerService) ListVolumes() ([]VolumeInfo, error) {
+func (d *DockerService) ListVolumes() (result []VolumeInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	volumes, err := d.client.VolumeList(d.ctx, volume.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
-	result := make([]VolumeInfo, 0, len(volumes.Volumes))
+	result = make([]VolumeInfo, 0, len(volumes.Volumes))
 	for _, vol := range volumes.Volumes {
 		var usage *VolumeUsage
 		if vol.UsageData != nil {
@@ -49,10 +59,20 @@ func (d *DockerService) ListVolumes() ([]VolumeInfo, error) {
 	return result, nil
 }
 
-func (d *DockerService) GetVolume(name string) (*VolumeInfo, error) {
+func (d *DockerService) GetVolume(name string) (result *VolumeInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	vol, err := d.client.VolumeInspect(d.ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	var usage *VolumeUsage
@@ -80,7 +100,17 @@ type CreateVolumeRequest struct {
 	Labels map[string]string `json:"labels"`
 }
 
-func (d *DockerService) CreateVolume(req CreateVolumeRequest) (*VolumeInfo, error) {
+func (d *DockerService) CreateVolume(req CreateVolumeRequest) (result *VolumeInfo, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
 	driver := req.Driver
 	if driver == "" {
 		driver = "local"
@@ -92,7 +122,7 @@ func (d *DockerService) CreateVolume(req CreateVolumeRequest) (*VolumeInfo, erro
 		Labels: req.Labels,
 	})
 	if err != nil {
-		return nil, err
+		return nil, d.handleError(err)
 	}
 
 	return &VolumeInfo{
@@ -105,6 +135,16 @@ func (d *DockerService) CreateVolume(req CreateVolumeRequest) (*VolumeInfo, erro
 	}, nil
 }
 
-func (d *DockerService) RemoveVolume(name string, force bool) error {
-	return d.client.VolumeRemove(d.ctx, name, force)
+func (d *DockerService) RemoveVolume(name string, force bool) (err error) {
+	if !d.IsConnected() {
+		return ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			err = ErrDockerNotConnected
+		}
+	}()
+	err = d.client.VolumeRemove(d.ctx, name, force)
+	return d.handleError(err)
 }

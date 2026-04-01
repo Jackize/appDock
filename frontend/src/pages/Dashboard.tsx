@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import { useContainers, useSystemStats, useStatsHistory } from "@/hooks/useDocker";
+import { useContainers, useDockerStatus, useSystemStats, useStatsHistory } from "@/hooks/useDocker";
 import { formatBytes } from "@/lib/utils";
 import {
   Activity,
+  AlertTriangle,
   Container,
   Cpu,
   HardDrive,
@@ -51,6 +52,9 @@ export function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useSystemStats();
   const { data: containers } = useContainers();
   const { data: historyData } = useStatsHistory();
+  const { data: dockerStatus } = useDockerStatus();
+  
+  const dockerAvailable = dockerStatus?.connected ?? true;
 
   // Use history from backend, pad with empty points if needed
   const chartData: ChartPoint[] = (() => {
@@ -84,34 +88,38 @@ export function Dashboard() {
             stats.containersRunning + stats.containersStopped
           }`
         : "-",
-      subtitle: "Đang chạy / Tổng",
+      subtitle: dockerAvailable ? "Running / Total" : "Docker offline",
       icon: Container,
-      color: "from-accent to-accent-dark",
-      iconBg: "bg-accent/20",
+      color: dockerAvailable ? "from-accent to-accent-dark" : "from-gray-500 to-gray-600",
+      iconBg: dockerAvailable ? "bg-accent/20" : "bg-gray-500/20",
+      disabled: !dockerAvailable,
     },
     {
       title: "Images",
       value: stats?.imagesCount ?? "-",
-      subtitle: "Images có sẵn",
+      subtitle: dockerAvailable ? "Available images" : "Docker offline",
       icon: Image,
-      color: "from-accent-teal to-accent-cyan",
-      iconBg: "bg-accent-teal/20",
+      color: dockerAvailable ? "from-accent-teal to-accent-cyan" : "from-gray-500 to-gray-600",
+      iconBg: dockerAvailable ? "bg-accent-teal/20" : "bg-gray-500/20",
+      disabled: !dockerAvailable,
     },
     {
       title: "Networks",
       value: stats?.networksCount ?? "-",
-      subtitle: "Mạng được cấu hình",
+      subtitle: dockerAvailable ? "Configured networks" : "Docker offline",
       icon: Network,
-      color: "from-status-paused to-orange-500",
-      iconBg: "bg-status-paused/20",
+      color: dockerAvailable ? "from-status-paused to-orange-500" : "from-gray-500 to-gray-600",
+      iconBg: dockerAvailable ? "bg-status-paused/20" : "bg-gray-500/20",
+      disabled: !dockerAvailable,
     },
     {
       title: "Volumes",
       value: stats?.volumesCount ?? "-",
-      subtitle: "Lưu trữ dữ liệu",
+      subtitle: dockerAvailable ? "Data storage" : "Docker offline",
       icon: HardDrive,
-      color: "from-status-created to-pink-500",
-      iconBg: "bg-status-created/20",
+      color: dockerAvailable ? "from-status-created to-pink-500" : "from-gray-500 to-gray-600",
+      iconBg: dockerAvailable ? "bg-status-created/20" : "bg-gray-500/20",
+      disabled: !dockerAvailable,
     },
   ];
 
@@ -130,24 +138,28 @@ export function Dashboard() {
         {statsLoading
           ? [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
           : statCards.map((card) => (
-              <Card key={card.title} className="relative overflow-hidden">
+              <Card key={card.title} className={`relative overflow-hidden ${card.disabled ? 'opacity-60' : ''}`}>
                 <CardContent>
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm text-text-secondary">
                         {card.title}
                       </p>
-                      <p className="text-3xl font-bold text-text-primary mt-1">
-                        {card.value}
+                      <p className={`text-3xl font-bold mt-1 ${card.disabled ? 'text-text-muted' : 'text-text-primary'}`}>
+                        {card.disabled ? '-' : card.value}
                       </p>
-                      <p className="text-xs text-text-muted mt-1">
+                      <p className={`text-xs mt-1 ${card.disabled ? 'text-status-stopped' : 'text-text-muted'}`}>
                         {card.subtitle}
                       </p>
                     </div>
                     <div
                       className={`w-12 h-12 rounded-xl ${card.iconBg} flex items-center justify-center`}
                     >
-                      <card.icon className="w-6 h-6 text-accent" />
+                      {card.disabled ? (
+                        <AlertTriangle className="w-6 h-6 text-gray-500" />
+                      ) : (
+                        <card.icon className="w-6 h-6 text-accent" />
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -482,12 +494,18 @@ export function Dashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Activity className="w-5 h-5 text-accent" />
-              <CardTitle>Containers gần đây</CardTitle>
+              <CardTitle>Recent Containers</CardTitle>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {containers && containers.length > 0 ? (
+          {!dockerAvailable ? (
+            <div className="text-center py-8">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-status-stopped opacity-50" />
+              <p className="text-text-muted">Docker is not running</p>
+              <p className="text-sm text-text-muted mt-1">Start Docker to view containers</p>
+            </div>
+          ) : containers && containers.length > 0 ? (
             <div className="space-y-3">
               {containers.slice(0, 5).map((container) => (
                 <div
@@ -513,7 +531,7 @@ export function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-text-secondary">
-                      {container.state === "running" ? "Đang chạy" : "Đã dừng"}
+                      {container.state === "running" ? "Running" : "Stopped"}
                     </p>
                     <p className="text-xs text-text-muted font-mono">
                       {container.id}
@@ -524,7 +542,7 @@ export function Dashboard() {
             </div>
           ) : (
             <p className="text-center text-text-muted py-8">
-              Chưa có container nào
+              No containers yet
             </p>
           )}
         </CardContent>

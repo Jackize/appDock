@@ -81,6 +81,10 @@ func (h *ImageHandler) RemoveImages(c *gin.Context) {
 		return
 	}
 
-	result := h.dockerService.RemoveImages(req.IDs, req.Force)
+	result, err := h.dockerService.RemoveImages(req.IDs, req.Force)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, result)
 }

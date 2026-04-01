@@ -3,9 +3,10 @@ import type {
   Container,
   ContainerDetail,
   ContainerStats,
+  DockerStatusResponse,
   Image,
   Network,
-  SystemInfo,
+  SystemInfoResponse,
   SystemStats,
   Volume,
 } from "@/types";
@@ -138,9 +139,10 @@ export interface ChartPoint {
 }
 
 export const systemAPI = {
-  getInfo: () => fetchAPI<SystemInfo>("/system/info"),
+  getInfo: () => fetchAPI<SystemInfoResponse>("/system/info"),
   getStats: () => fetchAPI<SystemStats>("/system/stats"),
   getStatsHistory: () => fetchAPI<ChartPoint[]>("/system/stats/history"),
+  getDockerStatus: () => fetchAPI<DockerStatusResponse>("/system/docker-status"),
 };
 
 // ==================== CONTAINERS ====================

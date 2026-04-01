@@ -31,11 +31,26 @@ func main() {
 	} else {
 		log.Println("📝 Loaded configuration from .env file")
 	}
-	// Khởi tạo Docker service
+	// Initialize Docker service (gracefully handles Docker not running)
 	dockerService, err := services.NewDockerService()
 	if err != nil {
-		log.Fatalf("Không thể kết nối tới Docker: %v", err)
+		log.Printf("⚠️  Warning: Could not initialize Docker service: %v", err)
 	}
+	if dockerService.IsConnected() {
+		log.Println("🐳 Connected to Docker daemon")
+	} else {
+		log.Println("⚠️  Docker is not running - system stats will still work, but Docker operations will be unavailable")
+	}
+	
+	// Start background health check to detect Docker status changes
+	dockerService.OnStatusChange(func(connected bool) {
+		if connected {
+			log.Println("🐳 Docker daemon is now available")
+		} else {
+			log.Println("⚠️  Docker daemon disconnected")
+		}
+	})
+	dockerService.StartHealthCheck(5 * time.Second)
 	defer dockerService.Close()
 
 	// Khởi tạo Auth service
@@ -88,6 +103,7 @@ func main() {
 		api.GET("/system/info", systemHandler.GetSystemInfo)
 		api.GET("/system/stats", systemHandler.GetSystemStats)
 		api.GET("/system/stats/history", systemHandler.GetStatsHistory)
+		api.GET("/system/docker-status", systemHandler.GetDockerStatus)
 
 		// Containers
 		containers := api.Group("/containers")

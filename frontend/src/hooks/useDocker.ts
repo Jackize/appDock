@@ -34,6 +34,14 @@ export function useStatsHistory() {
   });
 }
 
+export function useDockerStatus() {
+  return useQuery({
+    queryKey: ["system", "docker-status"],
+    queryFn: systemAPI.getDockerStatus,
+    refetchInterval: 3000, // Check every 3 seconds for real-time status
+  });
+}
+
 // ==================== CONTAINER HOOKS ====================
 
 export function useContainers(all = true) {
