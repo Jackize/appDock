@@ -151,6 +151,47 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	})
 }
 
+// ChangeUsernameRequest request body cho đổi username
+type ChangeUsernameRequest struct {
+	CurrentPassword string `json:"currentPassword" binding:"required"`
+	NewUsername     string `json:"newUsername" binding:"required"`
+}
+
+// ChangeUsername xử lý đổi username
+func (h *AuthHandler) ChangeUsername(c *gin.Context) {
+	var req ChangeUsernameRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Vui lòng nhập đầy đủ mật khẩu và username mới",
+		})
+		return
+	}
+
+	err := h.authService.ChangeUsername(req.CurrentPassword, req.NewUsername)
+	if err != nil {
+		switch err {
+		case services.ErrInvalidCurrentPassword:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Mật khẩu không đúng",
+			})
+		case services.ErrUsernameTooShort:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Username mới phải có ít nhất 3 ký tự",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Đã xảy ra lỗi khi đổi username",
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Đổi username thành công",
+		"username": req.NewUsername,
+	})
+}
+
 // extractToken lấy token từ Authorization header
 func extractToken(c *gin.Context) string {
 	bearerToken := c.GetHeader("Authorization")

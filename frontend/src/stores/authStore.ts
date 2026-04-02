@@ -17,6 +17,7 @@ export interface AuthState {
   setToken: (token: string, username: string) => void
   setAuthEnabled: (enabled: boolean) => void
   setLoading: (loading: boolean) => void
+  setUsername: (username: string) => void
   logout: () => void
   initialize: () => void
 }
@@ -56,6 +57,11 @@ export const useAuthStore = create<AuthState>()(
       // Set loading state
       setLoading: (loading: boolean) => {
         set({ isLoading: loading })
+      },
+
+      // Set username (after changing username)
+      setUsername: (username: string) => {
+        set({ user: { username } })
       },
 
       // Logout

@@ -98,6 +98,7 @@ func main() {
 		api.POST("/auth/refresh", authHandler.RefreshToken)
 		api.GET("/auth/me", authHandler.GetMe)
 		api.POST("/auth/change-password", authHandler.ChangePassword)
+		api.POST("/auth/change-username", authHandler.ChangeUsername)
 
 		// System
 		api.GET("/system/info", systemHandler.GetSystemInfo)
