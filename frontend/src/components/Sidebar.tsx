@@ -92,7 +92,7 @@ export function Sidebar() {
         <div className="absolute bottom-4 left-4 right-4 animate-fade-in">
           <div className="p-3 rounded-lg bg-background-tertiary border border-border">
             <p className="text-xs text-text-muted text-center">
-              Phiên bản 1.0.0
+              Phiên bản {__APP_VERSION__}
             </p>
           </div>
         </div>

@@ -293,7 +293,7 @@ export function Settings() {
         <div className="grid gap-3 text-sm">
           <div className="flex justify-between py-2 border-b border-border">
             <span className="text-text-muted">Phiên bản</span>
-            <span className="text-text-primary font-medium">1.0.0</span>
+            <span className="text-text-primary font-medium">{__APP_VERSION__}</span>
           </div>
           <div className="flex justify-between py-2 border-b border-border">
             <span className="text-text-muted">Người dùng hiện tại</span>
