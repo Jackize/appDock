@@ -61,8 +61,6 @@ async function fetchAPI<T>(
 
 // ==================== AUTH ====================
 
-import { hashPassword } from "@/lib/crypto";
-
 export interface LoginRequest {
   username: string;
   password: string;
@@ -83,21 +81,16 @@ export const authAPI = {
   getStatus: () =>
     fetchAPI<AuthStatusResponse>("/auth/status", undefined, true),
 
-  // Login (public endpoint) - password được hash SHA-256 trước khi gửi
-  login: async (data: LoginRequest) => {
-    const hashedPassword = await hashPassword(data.password);
-    return fetchAPI<LoginResponse>(
+  // Login (public endpoint)
+  login: (data: LoginRequest) =>
+    fetchAPI<LoginResponse>(
       "/auth/login",
       {
         method: "POST",
-        body: JSON.stringify({
-          username: data.username,
-          password: hashedPassword,
-        }),
+        body: JSON.stringify(data),
       },
       true,
-    );
-  },
+    ),
 
   // Refresh token (requires auth)
   refresh: () =>
@@ -108,23 +101,19 @@ export const authAPI = {
   // Get current user (requires auth)
   getMe: () => fetchAPI<{ username: string }>("/auth/me"),
 
-  // Change password (requires auth) - passwords được hash SHA-256 trước khi gửi
-  changePassword: async (data: {
-    currentPassword: string;
-    newPassword: string;
-  }) => {
-    const [hashedCurrentPassword, hashedNewPassword] = await Promise.all([
-      hashPassword(data.currentPassword),
-      hashPassword(data.newPassword),
-    ]);
-    return fetchAPI<{ message: string }>("/auth/change-password", {
+  // Change password (requires auth)
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    fetchAPI<{ message: string }>("/auth/change-password", {
       method: "POST",
-      body: JSON.stringify({
-        currentPassword: hashedCurrentPassword,
-        newPassword: hashedNewPassword,
-      }),
-    });
-  },
+      body: JSON.stringify(data),
+    }),
+
+  // Change username (requires auth)
+  changeUsername: (data: { currentPassword: string; newUsername: string }) =>
+    fetchAPI<{ message: string; username: string }>("/auth/change-username", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // ==================== SYSTEM ====================
@@ -252,3 +241,4 @@ export const volumesAPI = {
       method: "DELETE",
     }),
 };
+

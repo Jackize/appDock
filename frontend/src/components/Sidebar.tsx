@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Anchor,
+  Settings,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/images', icon: Image, label: 'Images' },
   { to: '/networks', icon: Network, label: 'Networks' },
   { to: '/volumes', icon: HardDrive, label: 'Volumes' },
+  { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ]
 
 export function Sidebar() {
