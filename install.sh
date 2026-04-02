@@ -58,6 +58,70 @@ check_dependencies() {
     fi
 }
 
+# Check if Docker is installed and running
+check_docker() {
+    if command -v docker &> /dev/null; then
+        if docker info &> /dev/null; then
+            return 0  # Docker installed and running
+        else
+            return 1  # Docker installed but not running
+        fi
+    else
+        return 2  # Docker not installed
+    fi
+}
+
+# Prompt user to install Docker
+prompt_install_docker() {
+    echo ""
+    print_warning "Docker is not installed on this system."
+    print_info "AppDock can still run and show system stats (CPU, RAM, Disk),"
+    print_info "but Docker management features will be unavailable until Docker is installed."
+    echo ""
+    
+    # Check if running interactively
+    if [[ -t 0 ]]; then
+        read -p "Would you like to install Docker now? [y/N] " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            install_docker
+            return $?
+        fi
+    else
+        print_info "Running non-interactively. Skipping Docker installation."
+        print_info "To install Docker later, run:"
+        print_info "  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install-docker.sh | sudo bash"
+    fi
+    
+    return 1  # Docker not installed
+}
+
+# Download and run Docker installer
+install_docker() {
+    print_info "Downloading Docker installer..."
+    local docker_installer="/tmp/install-docker.sh"
+    
+    if ! curl -fsSL -o "$docker_installer" "https://raw.githubusercontent.com/${REPO}/main/install-docker.sh"; then
+        print_error "Failed to download Docker installer"
+        print_info "You can install Docker manually: https://docs.docker.com/engine/install/"
+        return 1
+    fi
+    
+    chmod +x "$docker_installer"
+    
+    print_info "Running Docker installer..."
+    if bash "$docker_installer"; then
+        rm -f "$docker_installer"
+        print_success "Docker installed successfully!"
+        return 0
+    else
+        rm -f "$docker_installer"
+        print_error "Docker installation failed"
+        print_info "You can try installing Docker manually: https://docs.docker.com/engine/install/"
+        return 1
+    fi
+}
+
 detect_os() {
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
     case "$OS" in
@@ -166,14 +230,23 @@ install_binary() {
 }
 
 create_systemd_service() {
+    local docker_available="$1"
     print_info "Creating systemd service..."
+    
+    # Use Wants instead of Requires so service can start without Docker
+    local docker_unit=""
+    if [[ "$docker_available" == "true" ]]; then
+        docker_unit="Wants=docker.service
+After=network.target docker.service"
+    else
+        docker_unit="After=network.target"
+    fi
     
     cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=AppDock - Docker Management UI
 Documentation=https://github.com/${REPO}
-After=network.target docker.service
-Requires=docker.service
+${docker_unit}
 
 [Service]
 Type=simple
@@ -193,7 +266,7 @@ ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=${DATA_DIR}
 
-# Docker socket access
+# Docker socket access (if docker group exists)
 SupplementaryGroups=docker
 
 [Install]
@@ -210,6 +283,7 @@ EOF
 do_install() {
     local version="$1"
     local is_upgrade=false
+    local docker_available=false
     
     print_info "=========================================="
     print_info "AppDock Installer"
@@ -224,6 +298,33 @@ do_install() {
     if [[ "$OS" == "darwin" ]]; then
         print_warning "macOS detected. Systemd service will not be created."
         print_info "You can run AppDock manually or create a launchd service."
+    fi
+    
+    # Check Docker status (Linux only)
+    if [[ "$OS" == "linux" ]]; then
+        check_docker
+        local docker_status=$?
+        
+        case $docker_status in
+            0)
+                print_success "Docker is installed and running"
+                docker_available=true
+                ;;
+            1)
+                print_warning "Docker is installed but not running"
+                print_info "Start Docker with: sudo systemctl start docker"
+                docker_available=true
+                ;;
+            2)
+                prompt_install_docker
+                if check_docker; then
+                    docker_available=true
+                else
+                    docker_available=false
+                    print_warning "Continuing installation without Docker..."
+                fi
+                ;;
+        esac
     fi
     
     # Get version to install
@@ -252,7 +353,7 @@ do_install() {
     
     # Setup systemd service for Linux
     if [[ "$OS" == "linux" ]]; then
-        create_systemd_service
+        create_systemd_service "$docker_available"
         start_service
         
         echo ""
@@ -268,6 +369,14 @@ do_install() {
         print_info "View logs:      journalctl -u ${SERVICE_NAME} -f"
         print_info "Access UI:      http://localhost:${PORT}"
         print_info "Data directory: ${DATA_DIR}"
+        
+        if [[ "$docker_available" == "false" ]]; then
+            echo ""
+            print_warning "Docker is not installed. Some features will be unavailable."
+            print_info "To install Docker later, run:"
+            print_info "  curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install-docker.sh | sudo bash"
+            print_info "Then restart AppDock: sudo systemctl restart ${SERVICE_NAME}"
+        fi
         echo ""
     else
         echo ""
@@ -353,6 +462,18 @@ do_status() {
         print_warning "Data directory: Not created"
     fi
     
+    # Check Docker status
+    if command -v docker &> /dev/null; then
+        if docker info &> /dev/null 2>&1; then
+            print_success "Docker: Installed and running"
+        else
+            print_warning "Docker: Installed but not running"
+        fi
+    else
+        print_warning "Docker: Not installed"
+        print_info "  Install with: curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install-docker.sh | sudo bash"
+    fi
+    
     # Check service (Linux only)
     if [[ "$OS" == "linux" ]]; then
         if [[ -f "$SERVICE_FILE" ]]; then
@@ -389,17 +510,21 @@ Options:
     --uninstall         Uninstall AppDock
     --status            Show installation status
     --version, -v TAG   Install specific version (default: latest)
+    --install-docker    Install Docker only (without AppDock)
 
 Environment Variables:
     APPDOCK_PORT            Port to listen on (default: 8080)
     APPDOCK_AUTH_DISABLED   Disable authentication (default: false)
 
 Examples:
-    # Install latest version
+    # Install latest version (will prompt to install Docker if not found)
     sudo ./install.sh
 
     # Install specific version
     sudo ./install.sh --version v1.0.0
+
+    # Install Docker only
+    sudo ./install.sh --install-docker
 
     # Upgrade to latest
     sudo ./install.sh
@@ -412,6 +537,11 @@ Examples:
 
     # One-liner install from GitHub
     curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install.sh | sudo bash
+
+Note:
+    AppDock can run without Docker installed. System monitoring (CPU, RAM, Disk)
+    will work, but Docker management features will be unavailable.
+    You can install Docker later and restart AppDock to enable all features.
 EOF
 }
 
@@ -433,6 +563,10 @@ main() {
                 action="status"
                 shift
                 ;;
+            --install-docker)
+                action="install-docker"
+                shift
+                ;;
             --version|-v)
                 version="$2"
                 shift 2
@@ -446,9 +580,13 @@ main() {
     done
     
     case "$action" in
-        install)    do_install "$version" ;;
-        uninstall)  do_uninstall ;;
-        status)     do_status ;;
+        install)        do_install "$version" ;;
+        uninstall)      do_uninstall ;;
+        status)         do_status ;;
+        install-docker) 
+            check_root
+            install_docker
+            ;;
     esac
 }
 
