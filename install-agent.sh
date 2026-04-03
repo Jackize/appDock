@@ -103,18 +103,24 @@ generate_api_key() {
 
 download_binary() {
     DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY_NAME}"
-    
+    TMP_FILE="${INSTALL_DIR}/.appdock-agent.download.$$"
+    FINAL_BIN="${INSTALL_DIR}/appdock-agent"
+
     log_info "Downloading ${BINARY_NAME}..."
-    
+
     mkdir -p "$INSTALL_DIR"
-    
-    if ! curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/appdock-agent"; then
+
+    # Download to a temp file then rename. Writing directly over the running
+    # binary path fails with ETXTBSY / curl (23) when appdock-agent is active.
+    if ! curl -fsSL "$DOWNLOAD_URL" -o "$TMP_FILE"; then
+        rm -f "$TMP_FILE"
         log_error "Failed to download binary from ${DOWNLOAD_URL}"
         exit 1
     fi
-    
-    chmod +x "${INSTALL_DIR}/appdock-agent"
-    log_success "Binary downloaded to ${INSTALL_DIR}/appdock-agent"
+
+    chmod +x "$TMP_FILE"
+    mv -f "$TMP_FILE" "$FINAL_BIN"
+    log_success "Binary downloaded to ${FINAL_BIN}"
 }
 
 create_config() {
@@ -178,8 +184,9 @@ EOF
     systemctl enable "$SERVICE_NAME"
     
     log_info "Starting ${SERVICE_NAME} service..."
-    systemctl start "$SERVICE_NAME"
-    
+    # Use restart so reinstalls pick up a newly replaced binary (start is a no-op if already running).
+    systemctl restart "$SERVICE_NAME"
+
     log_success "Systemd service created and started"
 }
 
