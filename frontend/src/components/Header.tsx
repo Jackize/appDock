@@ -6,6 +6,7 @@ import { useDockerStatus, useSystemInfo, useSystemStats } from '@/hooks/useDocke
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { authAPI } from '@/services/api'
+import { ServerSelector } from './ServerSelector'
 
 export function Header() {
   const queryClient = useQueryClient()
@@ -153,6 +154,9 @@ export function Header() {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
+        {/* Server selector */}
+        <ServerSelector />
+
         {/* Docker status */}
         {dockerAvailable ? (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">

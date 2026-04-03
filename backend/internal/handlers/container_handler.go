@@ -14,17 +14,18 @@ import (
 )
 
 type ContainerHandler struct {
-	dockerService *services.DockerService
+	serverManager *services.ServerManager
 }
 
-func NewContainerHandler(ds *services.DockerService) *ContainerHandler {
-	return &ContainerHandler{dockerService: ds}
+func NewContainerHandler(sm *services.ServerManager) *ContainerHandler {
+	return &ContainerHandler{serverManager: sm}
 }
 
 // ListContainers trả về danh sách tất cả containers
 func (h *ContainerHandler) ListContainers(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	all := c.Query("all") == "true"
-	containers, err := h.dockerService.ListContainers(all)
+	containers, err := h.serverManager.ListContainers(serverID, all)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -34,8 +35,9 @@ func (h *ContainerHandler) ListContainers(c *gin.Context) {
 
 // GetContainer trả về chi tiết một container
 func (h *ContainerHandler) GetContainer(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
-	container, err := h.dockerService.GetContainer(id)
+	container, err := h.serverManager.GetContainer(serverID, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -45,8 +47,9 @@ func (h *ContainerHandler) GetContainer(c *gin.Context) {
 
 // StartContainer khởi động một container
 func (h *ContainerHandler) StartContainer(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
-	if err := h.dockerService.StartContainer(id); err != nil {
+	if err := h.serverManager.StartContainer(serverID, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -55,8 +58,9 @@ func (h *ContainerHandler) StartContainer(c *gin.Context) {
 
 // StopContainer dừng một container
 func (h *ContainerHandler) StopContainer(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
-	if err := h.dockerService.StopContainer(id); err != nil {
+	if err := h.serverManager.StopContainer(serverID, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -65,8 +69,9 @@ func (h *ContainerHandler) StopContainer(c *gin.Context) {
 
 // RestartContainer khởi động lại một container
 func (h *ContainerHandler) RestartContainer(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
-	if err := h.dockerService.RestartContainer(id); err != nil {
+	if err := h.serverManager.RestartContainer(serverID, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -75,9 +80,10 @@ func (h *ContainerHandler) RestartContainer(c *gin.Context) {
 
 // RemoveContainer xóa một container
 func (h *ContainerHandler) RemoveContainer(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
 	force := c.Query("force") == "true"
-	if err := h.dockerService.RemoveContainer(id, force); err != nil {
+	if err := h.serverManager.RemoveContainer(serverID, id, force); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -86,9 +92,10 @@ func (h *ContainerHandler) RemoveContainer(c *gin.Context) {
 
 // GetContainerLogs trả về logs của một container
 func (h *ContainerHandler) GetContainerLogs(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
 	tail := c.DefaultQuery("tail", "100")
-	logs, err := h.dockerService.GetContainerLogs(id, tail)
+	logs, err := h.serverManager.GetContainerLogs(serverID, id, tail)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -98,8 +105,9 @@ func (h *ContainerHandler) GetContainerLogs(c *gin.Context) {
 
 // GetContainerStats trả về stats của một container
 func (h *ContainerHandler) GetContainerStats(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
-	stats, err := h.dockerService.GetContainerStats(id)
+	stats, err := h.serverManager.GetContainerStats(serverID, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -115,8 +123,14 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-// StreamLogs stream logs qua WebSocket
+// StreamLogs stream logs qua WebSocket (only supports local server)
 func (h *ContainerHandler) StreamLogs(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
+	if !h.serverManager.IsLocal(serverID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "WebSocket streaming only supported for local server"})
+		return
+	}
+
 	id := c.Param("id")
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -125,7 +139,7 @@ func (h *ContainerHandler) StreamLogs(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	reader, err := h.dockerService.StreamContainerLogs(id)
+	reader, err := h.serverManager.GetLocalDocker().StreamContainerLogs(id)
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"`+err.Error()+`"}`))
 		return
@@ -197,8 +211,14 @@ func (h *ContainerHandler) StreamLogs(c *gin.Context) {
 	}
 }
 
-// ExecTerminal tạo terminal session qua WebSocket
+// ExecTerminal tạo terminal session qua WebSocket (only supports local server)
 func (h *ContainerHandler) ExecTerminal(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
+	if !h.serverManager.IsLocal(serverID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "WebSocket terminal only supported for local server"})
+		return
+	}
+
 	id := c.Param("id")
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -208,7 +228,7 @@ func (h *ContainerHandler) ExecTerminal(c *gin.Context) {
 	defer conn.Close()
 
 	// Tạo exec session
-	execID, err := h.dockerService.CreateExec(id)
+	execID, err := h.serverManager.GetLocalDocker().CreateExec(id)
 	if err != nil {
 		msg := map[string]string{"type": "error", "data": err.Error()}
 		jsonMsg, _ := json.Marshal(msg)
@@ -217,7 +237,7 @@ func (h *ContainerHandler) ExecTerminal(c *gin.Context) {
 	}
 
 	// Attach vào exec session
-	hijackedResp, err := h.dockerService.AttachExec(execID)
+	hijackedResp, err := h.serverManager.GetLocalDocker().AttachExec(execID)
 	if err != nil {
 		msg := map[string]string{"type": "error", "data": err.Error()}
 		jsonMsg, _ := json.Marshal(msg)

@@ -3,15 +3,30 @@ import type {
   Container,
   ContainerDetail,
   ContainerStats,
+  CreateServerRequest,
   DockerStatusResponse,
   Image,
   Network,
+  Server,
   SystemInfoResponse,
   SystemStats,
+  TestConnectionResponse,
+  UpdateServerRequest,
   Volume,
 } from "@/types";
 
 const API_BASE = "/api";
+
+// Current server ID for multi-server support
+let currentServerId: string = "local";
+
+export function setCurrentServerId(id: string) {
+  currentServerId = id;
+}
+
+export function getCurrentServerId(): string {
+  return currentServerId;
+}
 
 // Custom error class for auth errors
 export class AuthError extends Error {
@@ -35,6 +50,11 @@ async function fetchAPI<T>(
   // Add auth token if available and not skipping auth
   if (token && !skipAuth) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Add server ID header for multi-server support
+  if (currentServerId && currentServerId !== "local") {
+    (headers as Record<string, string>)["X-Server-ID"] = currentServerId;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -240,5 +260,31 @@ export const volumesAPI = {
     fetchAPI<{ message: string }>(`/volumes/${name}?force=${force}`, {
       method: "DELETE",
     }),
+};
+
+// ==================== SERVERS ====================
+
+export const serversAPI = {
+  list: () => fetchAPI<Server[]>("/servers"),
+
+  get: (id: string) => fetchAPI<Server>(`/servers/${id}`),
+
+  create: (data: CreateServerRequest) =>
+    fetchAPI<Server>("/servers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateServerRequest) =>
+    fetchAPI<Server>(`/servers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchAPI<{ message: string }>(`/servers/${id}`, { method: "DELETE" }),
+
+  testConnection: (id: string) =>
+    fetchAPI<TestConnectionResponse>(`/servers/${id}/test`),
 };
 

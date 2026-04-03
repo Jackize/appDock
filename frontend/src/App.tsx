@@ -8,6 +8,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Images } from "./pages/Images";
 import { Login } from "./pages/Login";
 import { Networks } from "./pages/Networks";
+import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
 import { Volumes } from "./pages/Volumes";
 import { authAPI } from "./services/api";
@@ -108,6 +109,7 @@ function App() {
                   <Route path="/images" element={<Images />} />
                   <Route path="/networks" element={<Networks />} />
                   <Route path="/volumes" element={<Volumes />} />
+                  <Route path="/servers" element={<Servers />} />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>
               </Layout>

@@ -43,7 +43,14 @@ build-binary: ## Compile Go binary only (BINARY=name GOOS=os GOARCH=arch)
 	cd backend && GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-s -w" -o $(or $(BINARY),appdock) .
 	@echo "✅ Done! Run with: ./backend/$(or $(BINARY),appdock)"
 
+build-agent: ## Build AppDock Agent binary (BINARY=name GOOS=os GOARCH=arch)
+	@echo "⚙️  Building Agent binary..."
+	cd agent && GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-s -w" -o $(or $(BINARY),appdock-agent) .
+	@echo "✅ Agent built! Run with: ./agent/$(or $(BINARY),appdock-agent) --api-key=<key>"
+
 build-local: build-frontend build-binary ## Build frontend + binary (BINARY=name GOOS=os GOARCH=arch)
+
+build-all: build-frontend build-binary build-agent ## Build all components
 
 dev: ## Chạy development mode (local)
 	@echo "🚀 Starting development servers..."

@@ -2,11 +2,14 @@ import {
   containersAPI,
   imagesAPI,
   networksAPI,
+  serversAPI,
   systemAPI,
   volumesAPI,
 } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
+import { useServerStore } from "@/stores/serverStore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { CreateServerRequest, UpdateServerRequest } from "@/types";
 
 // ==================== SYSTEM HOOKS ====================
 
@@ -408,6 +411,141 @@ export function useRemoveVolume() {
         description: `Volume ${name} đã được xóa`,
         variant: "success",
       });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+// ==================== SERVER HOOKS ====================
+
+export function useServers() {
+  const setServers = useServerStore((state) => state.setServers);
+
+  return useQuery({
+    queryKey: ["servers"],
+    queryFn: async () => {
+      const servers = await serversAPI.list();
+      setServers(servers);
+      return servers;
+    },
+    refetchInterval: 30000,
+  });
+}
+
+export function useServer(id: string) {
+  return useQuery({
+    queryKey: ["servers", id],
+    queryFn: () => serversAPI.get(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateServer() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  const addServer = useServerStore((state) => state.addServer);
+
+  return useMutation({
+    mutationFn: (data: CreateServerRequest) => serversAPI.create(data),
+    onSuccess: (server) => {
+      addServer(server);
+      queryClient.invalidateQueries({ queryKey: ["servers"] });
+      addToast({
+        title: "Thành công",
+        description: `Server ${server.name} đã được thêm`,
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useUpdateServer() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  const updateServer = useServerStore((state) => state.updateServer);
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateServerRequest }) =>
+      serversAPI.update(id, data),
+    onSuccess: (server) => {
+      updateServer(server.id, server);
+      queryClient.invalidateQueries({ queryKey: ["servers"] });
+      addToast({
+        title: "Thành công",
+        description: `Server ${server.name} đã được cập nhật`,
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useRemoveServer() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  const removeServer = useServerStore((state) => state.removeServer);
+
+  return useMutation({
+    mutationFn: serversAPI.remove,
+    onSuccess: (_, id) => {
+      removeServer(id);
+      queryClient.invalidateQueries({ queryKey: ["servers"] });
+      addToast({
+        title: "Thành công",
+        description: "Server đã được xóa",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useTestServerConnection() {
+  const addToast = useAppStore((state) => state.addToast);
+  const updateServer = useServerStore((state) => state.updateServer);
+
+  return useMutation({
+    mutationFn: serversAPI.testConnection,
+    onSuccess: (result, id) => {
+      updateServer(id, { status: result.connected ? "online" : "offline" });
+      if (result.connected) {
+        addToast({
+          title: "Kết nối thành công",
+          description: "Server đang hoạt động",
+          variant: "success",
+        });
+      } else {
+        addToast({
+          title: "Kết nối thất bại",
+          description: result.error || "Không thể kết nối đến server",
+          variant: "error",
+        });
+      }
     },
     onError: (error: Error) => {
       addToast({

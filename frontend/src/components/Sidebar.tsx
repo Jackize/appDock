@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Anchor,
+  Server,
   Settings,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/images', icon: Image, label: 'Images' },
   { to: '/networks', icon: Network, label: 'Networks' },
   { to: '/volumes', icon: HardDrive, label: 'Volumes' },
+  { to: '/servers', icon: Server, label: 'Servers' },
   { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ]
 

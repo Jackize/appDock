@@ -140,6 +140,7 @@ export interface SystemStats {
   volumesCount: number;
   networksCount: number;
   cpuUsage: number;
+  cpuCores?: number;
   memoryUsage: number;
   memoryTotal: number;
   memoryUsed: number;
@@ -148,5 +149,39 @@ export interface SystemStats {
   cpuTemperature?: number;
   diskUsage: number;
   diskUsed: number;
+  diskFree?: number;
   diskTotal: number;
+}
+
+// Server types
+export type ServerStatus = 'online' | 'offline' | 'unknown';
+
+export interface Server {
+  id: string;
+  name: string;
+  host: string;
+  isLocal: boolean;
+  isDefault: boolean;
+  status: ServerStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateServerRequest {
+  name: string;
+  host: string;
+  apiKey: string;
+}
+
+export interface UpdateServerRequest {
+  name?: string;
+  host?: string;
+  apiKey?: string;
+  isDefault?: boolean;
+}
+
+export interface TestConnectionResponse {
+  connected: boolean;
+  message?: string;
+  error?: string;
 }
