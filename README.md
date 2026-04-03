@@ -75,6 +75,10 @@ Access UI at **http://localhost:8080**
 - 🌐 **Networks** - Manage Docker networks
 - 💾 **Volumes** - Manage Docker volumes
 - 🔐 **Authentication** - JWT-based authentication (optional)
+- 🖥️ **Multi-Server Management** - Monitor and manage multiple remote servers
+  - Install lightweight agent on remote servers
+  - View CPU, RAM, disk usage from all servers
+  - Manage Docker resources across servers
 
 ---
 
@@ -184,6 +188,92 @@ docker run -d \
 ```
 
 For native installation, edit the systemd service file at `/etc/systemd/system/appdock.service` and run `systemctl daemon-reload && systemctl restart appdock`.
+
+---
+
+## 🖥️ Multi-Server Management (Agent)
+
+AppDock can monitor and manage multiple remote servers using a lightweight agent.
+
+### Installing Agent on Remote Servers
+
+**One-liner Install (Linux/macOS):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install-agent.sh | sudo bash
+```
+
+This will:
+- Download the latest agent binary for your OS/architecture
+- Auto-generate a secure API key
+- Create a systemd service (auto-start on boot)
+- Start the agent on port **9090**
+
+**IMPORTANT:** Save the API key shown after installation - you'll need it to add this server in AppDock UI.
+
+### Agent Installation Options
+
+```bash
+# Install with custom port
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install-agent.sh | sudo bash -s -- --port 8090
+
+# Install specific version
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install-agent.sh | sudo bash -s -- --version v1.0.0
+
+# Use custom API key
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install-agent.sh | sudo bash -s -- --api-key your-secret-key
+
+# Check installation status
+sudo ./install-agent.sh --status
+
+# Uninstall agent
+sudo ./install-agent.sh --uninstall
+```
+
+### Agent Service Management
+
+| Command | Description |
+|---------|-------------|
+| `systemctl status appdock-agent` | Check agent status |
+| `systemctl restart appdock-agent` | Restart agent |
+| `systemctl stop appdock-agent` | Stop agent |
+| `journalctl -u appdock-agent -f` | View agent logs |
+
+### Adding Remote Server in AppDock
+
+1. Go to **Servers** page in AppDock UI
+2. Click **Add Server**
+3. Enter:
+   - **Name**: Friendly name (e.g., "Production Server")
+   - **Host**: Agent URL (e.g., `http://192.168.1.100:9090`)
+   - **API Key**: The key shown during agent installation
+4. Click **Test Connection** to verify
+5. Use the server selector in the header to switch between servers
+
+### Agent Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AGENT_PORT` | `9090` | Agent listen port |
+| `AGENT_API_KEY` | (required) | API key for authentication |
+| `AGENT_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket path |
+
+### Manual Agent Installation
+
+If you prefer manual installation:
+
+```bash
+# Download binary (replace OS and ARCH)
+curl -fsSL https://github.com/Jackize/appDock/releases/latest/download/appdock-agent-linux-amd64 -o appdock-agent
+chmod +x appdock-agent
+
+# Generate API key
+API_KEY=$(openssl rand -hex 32)
+echo "Your API Key: $API_KEY"
+
+# Run agent
+./appdock-agent --api-key=$API_KEY --port=9090
+```
 
 ---
 
@@ -331,6 +421,17 @@ appdock/
 - `GET /api/networks` - List networks
 - `GET /api/volumes` - List volumes
 
+### Servers (Multi-server Management)
+
+- `GET /api/servers` - List registered servers
+- `GET /api/servers/:id` - Get server details
+- `POST /api/servers` - Add remote server
+- `PUT /api/servers/:id` - Update server configuration
+- `DELETE /api/servers/:id` - Remove server
+- `GET /api/servers/:id/test` - Test server connection
+
+**Note:** Use `X-Server-ID` header to route requests to specific server.
+
 ---
 
 ## 🚢 CI/CD with GitHub Actions
@@ -410,6 +511,7 @@ docker buildx build \
 - [x] Bulk delete images
 - [x] JWT Authentication
 - [x] Native binary installation
+- [x] Multi-server management with agent
 - [ ] Multi-language support
 - [ ] Dark/Light theme toggle
 - [ ] Container resource limits

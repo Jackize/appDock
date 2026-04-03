@@ -9,16 +9,17 @@ import (
 )
 
 type ImageHandler struct {
-	dockerService *services.DockerService
+	serverManager *services.ServerManager
 }
 
-func NewImageHandler(ds *services.DockerService) *ImageHandler {
-	return &ImageHandler{dockerService: ds}
+func NewImageHandler(sm *services.ServerManager) *ImageHandler {
+	return &ImageHandler{serverManager: sm}
 }
 
 // ListImages trả về danh sách tất cả images
 func (h *ImageHandler) ListImages(c *gin.Context) {
-	images, err := h.dockerService.ListImages()
+	serverID := GetServerIDFromRequest(c)
+	images, err := h.serverManager.ListImages(serverID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -28,8 +29,9 @@ func (h *ImageHandler) ListImages(c *gin.Context) {
 
 // GetImage trả về chi tiết một image
 func (h *ImageHandler) GetImage(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
-	image, err := h.dockerService.GetImage(id)
+	image, err := h.serverManager.GetImage(serverID, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -39,17 +41,24 @@ func (h *ImageHandler) GetImage(c *gin.Context) {
 
 // RemoveImage xóa một image
 func (h *ImageHandler) RemoveImage(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
 	force := c.Query("force") == "true"
-	if err := h.dockerService.RemoveImage(id, force); err != nil {
+	if err := h.serverManager.RemoveImage(serverID, id, force); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Image đã được xóa"})
 }
 
-// PullImage pull một image từ registry
+// PullImage pull một image từ registry (only local server)
 func (h *ImageHandler) PullImage(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
+	if !h.serverManager.IsLocal(serverID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pull image only supported for local server"})
+		return
+	}
+
 	var req struct {
 		Image string `json:"image" binding:"required"`
 	}
@@ -58,15 +67,21 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 		return
 	}
 
-	if err := h.dockerService.PullImage(req.Image); err != nil {
+	if err := h.serverManager.GetLocalDocker().PullImage(req.Image); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Image đã được tải về"})
 }
 
-// RemoveImages xóa nhiều images cùng lúc
+// RemoveImages xóa nhiều images cùng lúc (only local server)
 func (h *ImageHandler) RemoveImages(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
+	if !h.serverManager.IsLocal(serverID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bulk remove images only supported for local server"})
+		return
+	}
+
 	var req struct {
 		IDs   []string `json:"ids" binding:"required"`
 		Force bool     `json:"force"`
@@ -81,7 +96,7 @@ func (h *ImageHandler) RemoveImages(c *gin.Context) {
 		return
 	}
 
-	result, err := h.dockerService.RemoveImages(req.IDs, req.Force)
+	result, err := h.serverManager.GetLocalDocker().RemoveImages(req.IDs, req.Force)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

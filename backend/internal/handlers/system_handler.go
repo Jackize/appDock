@@ -10,49 +10,76 @@ import (
 )
 
 type SystemHandler struct {
-	dockerService       *services.DockerService
+	serverManager       *services.ServerManager
 	statsHistoryService *services.StatsHistoryService
 }
 
-func NewSystemHandler(ds *services.DockerService, shs *services.StatsHistoryService) *SystemHandler {
+func NewSystemHandler(sm *services.ServerManager, shs *services.StatsHistoryService) *SystemHandler {
 	return &SystemHandler{
-		dockerService:       ds,
+		serverManager:       sm,
 		statsHistoryService: shs,
 	}
 }
 
 // GetSystemInfo returns Docker system info (or basic info if Docker is not available)
 func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
-	info, err := h.dockerService.GetSystemInfo()
-	if err != nil {
-		if errors.Is(err, services.ErrDockerNotConnected) {
-			// Return basic system info when Docker is not available
-			basicInfo := h.dockerService.GetBasicSystemInfo()
-			c.JSON(http.StatusOK, gin.H{
-				"dockerAvailable": false,
-				"info":            basicInfo,
-			})
+	serverID := GetServerIDFromRequest(c)
+
+	if h.serverManager.IsLocal(serverID) {
+		info, err := h.serverManager.GetLocalDocker().GetSystemInfo()
+		if err != nil {
+			if errors.Is(err, services.ErrDockerNotConnected) {
+				basicInfo := h.serverManager.GetLocalDocker().GetBasicSystemInfo()
+				c.JSON(http.StatusOK, gin.H{
+					"dockerAvailable": false,
+					"info":            basicInfo,
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		c.JSON(http.StatusOK, gin.H{
+			"dockerAvailable": true,
+			"info":            info,
+		})
+		return
+	}
+
+	// For remote servers, return combined system stats
+	stats, err := h.serverManager.GetSystemStats(serverID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"dockerAvailable": true,
-		"info":            info,
+		"info":            stats,
 	})
 }
 
 // GetDockerStatus returns Docker connection status
 func (h *SystemHandler) GetDockerStatus(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
+
+	if h.serverManager.IsLocal(serverID) {
+		c.JSON(http.StatusOK, gin.H{
+			"connected": h.serverManager.GetLocalDocker().IsConnected(),
+		})
+		return
+	}
+
+	// For remote servers, test the connection
+	err := h.serverManager.TestConnection(serverID)
 	c.JSON(http.StatusOK, gin.H{
-		"connected": h.dockerService.IsConnected(),
+		"connected": err == nil,
 	})
 }
 
 // GetSystemStats trả về thống kê hệ thống
 func (h *SystemHandler) GetSystemStats(c *gin.Context) {
-	stats, err := h.dockerService.GetSystemStats()
+	serverID := GetServerIDFromRequest(c)
+	stats, err := h.serverManager.GetSystemStats(serverID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -60,9 +87,13 @@ func (h *SystemHandler) GetSystemStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetStatsHistory trả về lịch sử thống kê
+// GetStatsHistory trả về lịch sử thống kê (only local server)
 func (h *SystemHandler) GetStatsHistory(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
+	if !h.serverManager.IsLocal(serverID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Stats history only available for local server"})
+		return
+	}
 	history := h.statsHistoryService.GetHistory()
 	c.JSON(http.StatusOK, history)
 }
-

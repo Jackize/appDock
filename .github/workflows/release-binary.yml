@@ -91,3 +91,58 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: backend/${{ matrix.name }}
+
+  build-agent:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            name: appdock-agent-linux-amd64
+          - goos: linux
+            goarch: arm64
+            name: appdock-agent-linux-arm64
+          - goos: darwin
+            goarch: amd64
+            name: appdock-agent-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            name: appdock-agent-darwin-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: agent/go.sum
+
+      - name: Build agent binary
+        run: make build-agent GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} BINARY=${{ matrix.name }}
+
+      - name: Upload agent to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: agent/${{ matrix.name }}
+
+  upload-installer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload install scripts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            install.sh
+            install-agent.sh

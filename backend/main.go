@@ -62,19 +62,27 @@ func main() {
 		dataDir = "./data"
 	}
 	statsHistoryService := services.NewStatsHistoryService(dataDir)
+
+	// Initialize Server Store and Manager for multi-server support
+	serverStore, err := services.NewServerStore(dataDir)
+	if err != nil {
+		log.Printf("⚠️  Warning: Could not initialize server store: %v", err)
+	}
+	serverManager := services.NewServerManager(serverStore, dockerService)
 	defer statsHistoryService.Close()
 
-	// Start stats collection goroutine
+	// Start stats collection goroutine (only for local server)
 	statsCollectorCtx, statsCollectorCancel := context.WithCancel(context.Background())
-	go collectStats(statsCollectorCtx, dockerService, statsHistoryService)
+	go collectStats(statsCollectorCtx, serverManager, statsHistoryService)
 
 	// Khởi tạo handlers
-	containerHandler := handlers.NewContainerHandler(dockerService)
-	imageHandler := handlers.NewImageHandler(dockerService)
-	networkHandler := handlers.NewNetworkHandler(dockerService)
-	volumeHandler := handlers.NewVolumeHandler(dockerService)
-	systemHandler := handlers.NewSystemHandler(dockerService, statsHistoryService)
+	containerHandler := handlers.NewContainerHandler(serverManager)
+	imageHandler := handlers.NewImageHandler(serverManager)
+	networkHandler := handlers.NewNetworkHandler(serverManager)
+	volumeHandler := handlers.NewVolumeHandler(serverManager)
+	systemHandler := handlers.NewSystemHandler(serverManager, statsHistoryService)
 	authHandler := handlers.NewAuthHandler(authService)
+	serverHandler := handlers.NewServerHandler(serverStore, serverManager)
 
 	// Khởi tạo Gin router
 	router := gin.Default()
@@ -83,7 +91,7 @@ func main() {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization", "X-Server-ID"}
 	router.Use(cors.New(config))
 
 	// Auth status và login (public routes - không cần auth)
@@ -145,6 +153,17 @@ func main() {
 			volumes.GET("/:name", volumeHandler.GetVolume)
 			volumes.POST("", volumeHandler.CreateVolume)
 			volumes.DELETE("/:name", volumeHandler.RemoveVolume)
+		}
+
+		// Servers (multi-server management)
+		servers := api.Group("/servers")
+		{
+			servers.GET("", serverHandler.ListServers)
+			servers.GET("/:id", serverHandler.GetServer)
+			servers.POST("", serverHandler.CreateServer)
+			servers.PUT("/:id", serverHandler.UpdateServer)
+			servers.DELETE("/:id", serverHandler.DeleteServer)
+			servers.GET("/:id/test", serverHandler.TestConnection)
 		}
 	}
 
@@ -243,25 +262,25 @@ func main() {
 }
 
 // collectStats periodically collects system stats and adds to history
-func collectStats(ctx context.Context, ds *services.DockerService, shs *services.StatsHistoryService) {
+func collectStats(ctx context.Context, sm *services.ServerManager, shs *services.StatsHistoryService) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	// Collect immediately on start
-	collectAndAddPoint(ds, shs)
+	collectAndAddPoint(sm, shs)
 
 	for {
 		select {
 		case <-ticker.C:
-			collectAndAddPoint(ds, shs)
+			collectAndAddPoint(sm, shs)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func collectAndAddPoint(ds *services.DockerService, shs *services.StatsHistoryService) {
-	stats, err := ds.GetSystemStats()
+func collectAndAddPoint(sm *services.ServerManager, shs *services.StatsHistoryService) {
+	stats, err := sm.GetSystemStats("")
 	if err != nil {
 		return
 	}
