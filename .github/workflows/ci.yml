@@ -10,38 +10,31 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # Build và test Backend (Go)
-  backend:
+  # Detect which folders changed
+  changes:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      agent: ${{ steps.filter.outputs.agent }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          go-version: "1.24"
-          cache-dependency-path: backend/go.sum
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+            agent:
+              - 'agent/**'
 
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Prepare static placeholder
-        run: mkdir -p ../static && touch ../static/.placeholder
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Test
-        run: go test -v ./...
-
-  # Build Frontend (React)
+  # Build Frontend - only if frontend changed
   frontend:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     defaults:
       run:
         working-directory: ./frontend
@@ -76,10 +69,74 @@ jobs:
           path: frontend/dist/
           retention-days: 1
 
-  # Validate binary build pipeline (dry-run, no upload)
+  # Build Backend - only if backend changed
+  backend:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: backend/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Prepare static placeholder
+        run: mkdir -p static && touch static/.placeholder
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+  # Build Agent - only if agent changed
+  agent:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.agent == 'true'
+    defaults:
+      run:
+        working-directory: ./agent
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: agent/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+  # Validate binary build pipeline - if frontend OR backend changed
   build-binary:
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [changes, frontend, backend]
+    if: |
+      always() &&
+      (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true') &&
+      (needs.frontend.result == 'success' || needs.frontend.result == 'skipped') &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped')
 
     steps:
       - name: Checkout
@@ -103,29 +160,17 @@ jobs:
         with:
           name: static-assets-ci
           path: backend/static/
+        continue-on-error: true
+
+      - name: Build frontend if no artifact
+        if: needs.changes.outputs.frontend != 'true'
+        run: |
+          cd frontend && npm ci && npm run build
+          cp -r dist/. ../backend/static/
+
+      - name: Copy frontend assets if artifact exists
+        if: needs.changes.outputs.frontend == 'true'
+        run: echo "Static assets downloaded from artifact"
 
       - name: Build binary (linux/amd64)
         run: make build-binary GOOS=linux GOARCH=amd64 BINARY=appdock-linux-amd64
-
-  # Build Docker image (không push)
-  docker-build:
-    runs-on: ubuntu-latest
-    needs: [backend, frontend]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          push: false
-          tags: appdock:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
