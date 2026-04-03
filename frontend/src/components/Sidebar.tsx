@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Anchor,
+  Globe,
   Server,
   Settings,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/images', icon: Image, label: 'Images' },
   { to: '/networks', icon: Network, label: 'Networks' },
   { to: '/volumes', icon: HardDrive, label: 'Volumes' },
+  { to: '/nginx', icon: Globe, label: 'Nginx' },
   { to: '/servers', icon: Server, label: 'Servers' },
   { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ]

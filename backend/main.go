@@ -68,7 +68,11 @@ func main() {
 	if err != nil {
 		log.Printf("⚠️  Warning: Could not initialize server store: %v", err)
 	}
-	serverManager := services.NewServerManager(serverStore, dockerService)
+	nginxService, err := services.NewNginxService(dataDir)
+	if err != nil {
+		log.Printf("⚠️  Warning: Could not initialize Nginx service: %v", err)
+	}
+	serverManager := services.NewServerManager(serverStore, dockerService, nginxService)
 	defer statsHistoryService.Close()
 
 	// Start stats collection goroutine (only for local server)
@@ -83,6 +87,7 @@ func main() {
 	systemHandler := handlers.NewSystemHandler(serverManager, statsHistoryService)
 	authHandler := handlers.NewAuthHandler(authService)
 	serverHandler := handlers.NewServerHandler(serverStore, serverManager)
+	nginxHandler := handlers.NewNginxHandler(serverManager)
 
 	// Khởi tạo Gin router
 	router := gin.Default()
@@ -164,6 +169,33 @@ func main() {
 			servers.PUT("/:id", serverHandler.UpdateServer)
 			servers.DELETE("/:id", serverHandler.DeleteServer)
 			servers.GET("/:id/test", serverHandler.TestConnection)
+		}
+
+		// Nginx management
+		nginx := api.Group("/nginx")
+		{
+			nginx.GET("/status", nginxHandler.GetStatus)
+			nginx.POST("/install", nginxHandler.Install)
+			nginx.POST("/install-certbot", nginxHandler.InstallCertbot)
+			nginx.POST("/start", nginxHandler.Start)
+			nginx.POST("/stop", nginxHandler.Stop)
+			nginx.POST("/reload", nginxHandler.Reload)
+			nginx.POST("/test", nginxHandler.TestConfig)
+
+			// Domains
+			nginx.GET("/domains", nginxHandler.ListDomains)
+			nginx.GET("/domains/:id", nginxHandler.GetDomain)
+			nginx.POST("/domains", nginxHandler.CreateDomain)
+			nginx.PUT("/domains/:id", nginxHandler.UpdateDomain)
+			nginx.DELETE("/domains/:id", nginxHandler.DeleteDomain)
+			nginx.POST("/domains/:id/enable", nginxHandler.EnableDomain)
+			nginx.POST("/domains/:id/disable", nginxHandler.DisableDomain)
+			nginx.GET("/domains/:id/config", nginxHandler.GetDomainConfig)
+
+			// SSL Certificates
+			nginx.GET("/certificates", nginxHandler.ListCertificates)
+			nginx.POST("/certificates", nginxHandler.RequestCertificate)
+			nginx.DELETE("/certificates/:domain", nginxHandler.RevokeCertificate)
 		}
 	}
 
