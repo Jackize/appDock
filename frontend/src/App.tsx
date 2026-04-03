@@ -8,6 +8,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Images } from "./pages/Images";
 import { Login } from "./pages/Login";
 import { Networks } from "./pages/Networks";
+import { Nginx } from "./pages/Nginx";
 import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
 import { Volumes } from "./pages/Volumes";
@@ -109,6 +110,7 @@ function App() {
                   <Route path="/images" element={<Images />} />
                   <Route path="/networks" element={<Networks />} />
                   <Route path="/volumes" element={<Volumes />} />
+                  <Route path="/nginx" element={<Nginx />} />
                   <Route path="/servers" element={<Servers />} />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>

@@ -256,3 +256,95 @@ func (c *AgentClient) RemoveVolume(name string, force bool) error {
 	_, err := c.doRequest("DELETE", path, nil)
 	return err
 }
+
+// ==================== Nginx ====================
+
+func (c *AgentClient) GetNginxStatus() (json.RawMessage, error) {
+	return c.doRequest("GET", "/api/nginx/status", nil)
+}
+
+func (c *AgentClient) InstallNginx() error {
+	_, err := c.doRequestWithTimeout("POST", "/api/nginx/install", nil, 5*time.Minute)
+	return err
+}
+
+func (c *AgentClient) InstallCertbot() error {
+	_, err := c.doRequestWithTimeout("POST", "/api/nginx/install-certbot", nil, 5*time.Minute)
+	return err
+}
+
+func (c *AgentClient) StartNginx() error {
+	_, err := c.doRequest("POST", "/api/nginx/start", nil)
+	return err
+}
+
+func (c *AgentClient) StopNginx() error {
+	_, err := c.doRequest("POST", "/api/nginx/stop", nil)
+	return err
+}
+
+func (c *AgentClient) ReloadNginx() error {
+	_, err := c.doRequest("POST", "/api/nginx/reload", nil)
+	return err
+}
+
+func (c *AgentClient) TestNginxConfig() (json.RawMessage, error) {
+	return c.doRequest("POST", "/api/nginx/test", nil)
+}
+
+func (c *AgentClient) ListNginxDomains() (json.RawMessage, error) {
+	return c.doRequest("GET", "/api/nginx/domains", nil)
+}
+
+func (c *AgentClient) GetNginxDomain(id string) (json.RawMessage, error) {
+	return c.doRequest("GET", "/api/nginx/domains/"+id, nil)
+}
+
+func (c *AgentClient) CreateNginxDomain(body interface{}) (json.RawMessage, error) {
+	return c.doRequest("POST", "/api/nginx/domains", body)
+}
+
+func (c *AgentClient) UpdateNginxDomain(id string, body interface{}) (json.RawMessage, error) {
+	return c.doRequest("PUT", "/api/nginx/domains/"+id, body)
+}
+
+func (c *AgentClient) DeleteNginxDomain(id string) error {
+	_, err := c.doRequest("DELETE", "/api/nginx/domains/"+id, nil)
+	return err
+}
+
+func (c *AgentClient) EnableNginxDomain(id string) error {
+	_, err := c.doRequest("POST", "/api/nginx/domains/"+id+"/enable", nil)
+	return err
+}
+
+func (c *AgentClient) DisableNginxDomain(id string) error {
+	_, err := c.doRequest("POST", "/api/nginx/domains/"+id+"/disable", nil)
+	return err
+}
+
+func (c *AgentClient) GetNginxDomainConfig(id string) (json.RawMessage, error) {
+	return c.doRequest("GET", "/api/nginx/domains/"+id+"/config", nil)
+}
+
+func (c *AgentClient) ListNginxCertificates() (json.RawMessage, error) {
+	return c.doRequest("GET", "/api/nginx/certificates", nil)
+}
+
+func (c *AgentClient) RequestNginxCertificate(body interface{}) error {
+	_, err := c.doRequestWithTimeout("POST", "/api/nginx/certificates", body, 5*time.Minute)
+	return err
+}
+
+func (c *AgentClient) RevokeNginxCertificate(domain string) error {
+	_, err := c.doRequest("DELETE", "/api/nginx/certificates/"+domain, nil)
+	return err
+}
+
+// doRequestWithTimeout is like doRequest but with a custom timeout
+func (c *AgentClient) doRequestWithTimeout(method, path string, body interface{}, timeout time.Duration) ([]byte, error) {
+	oldTimeout := c.httpClient.Timeout
+	c.httpClient.Timeout = timeout
+	defer func() { c.httpClient.Timeout = oldTimeout }()
+	return c.doRequest(method, path, body)
+}

@@ -185,3 +185,55 @@ export interface TestConnectionResponse {
   message?: string;
   error?: string;
 }
+
+// Nginx types
+export type SSLStatus = 'none' | 'active' | 'expired' | 'pending';
+
+export interface NginxStatus {
+  installed: boolean;
+  running: boolean;
+  version: string;
+  configOk: boolean;
+  certbotInstalled: boolean;
+}
+
+export interface Domain {
+  id: string;
+  domain: string;
+  upstreamHost: string;
+  upstreamPort: number;
+  sslEnabled: boolean;
+  sslStatus: SSLStatus;
+  sslExpiry?: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Certificate {
+  domain: string;
+  issuer: string;
+  expiresAt: string;
+  path: string;
+  keyPath: string;
+  autoRenew: boolean;
+}
+
+export interface CreateDomainRequest {
+  domain: string;
+  upstreamHost: string;
+  upstreamPort: number;
+  sslEnabled: boolean;
+  sslEmail?: string;
+}
+
+export interface UpdateDomainRequest {
+  upstreamHost?: string;
+  upstreamPort?: number;
+  enabled?: boolean;
+}
+
+export interface RequestCertificateRequest {
+  domain: string;
+  email: string;
+}

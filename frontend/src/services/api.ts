@@ -1,16 +1,22 @@
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import type {
+  Certificate,
   Container,
   ContainerDetail,
   ContainerStats,
+  CreateDomainRequest,
   CreateServerRequest,
   DockerStatusResponse,
+  Domain,
   Image,
   Network,
+  NginxStatus,
+  RequestCertificateRequest,
   Server,
   SystemInfoResponse,
   SystemStats,
   TestConnectionResponse,
+  UpdateDomainRequest,
   UpdateServerRequest,
   Volume,
 } from "@/types";
@@ -286,5 +292,80 @@ export const serversAPI = {
 
   testConnection: (id: string) =>
     fetchAPI<TestConnectionResponse>(`/servers/${id}/test`),
+};
+
+// ==================== NGINX ====================
+
+export const nginxAPI = {
+  getStatus: () => fetchAPI<NginxStatus>("/nginx/status"),
+
+  install: () =>
+    fetchAPI<{ message: string }>("/nginx/install", { method: "POST" }),
+
+  installCertbot: () =>
+    fetchAPI<{ message: string }>("/nginx/install-certbot", { method: "POST" }),
+
+  start: () =>
+    fetchAPI<{ message: string }>("/nginx/start", { method: "POST" }),
+
+  stop: () =>
+    fetchAPI<{ message: string }>("/nginx/stop", { method: "POST" }),
+
+  reload: () =>
+    fetchAPI<{ message: string }>("/nginx/reload", { method: "POST" }),
+
+  testConfig: () =>
+    fetchAPI<{ valid: boolean; output: string }>("/nginx/test", {
+      method: "POST",
+    }),
+
+  // Domains
+  listDomains: () => fetchAPI<Domain[]>("/nginx/domains"),
+
+  getDomain: (id: string) => fetchAPI<Domain>(`/nginx/domains/${id}`),
+
+  createDomain: (data: CreateDomainRequest) =>
+    fetchAPI<Domain>("/nginx/domains", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateDomain: (id: string, data: UpdateDomainRequest) =>
+    fetchAPI<Domain>(`/nginx/domains/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteDomain: (id: string) =>
+    fetchAPI<{ message: string }>(`/nginx/domains/${id}`, {
+      method: "DELETE",
+    }),
+
+  enableDomain: (id: string) =>
+    fetchAPI<{ message: string }>(`/nginx/domains/${id}/enable`, {
+      method: "POST",
+    }),
+
+  disableDomain: (id: string) =>
+    fetchAPI<{ message: string }>(`/nginx/domains/${id}/disable`, {
+      method: "POST",
+    }),
+
+  getDomainConfig: (id: string) =>
+    fetchAPI<{ config: string }>(`/nginx/domains/${id}/config`),
+
+  // SSL Certificates
+  listCertificates: () => fetchAPI<Certificate[]>("/nginx/certificates"),
+
+  requestCertificate: (data: RequestCertificateRequest) =>
+    fetchAPI<{ message: string }>("/nginx/certificates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  revokeCertificate: (domain: string) =>
+    fetchAPI<{ message: string }>(`/nginx/certificates/${domain}`, {
+      method: "DELETE",
+    }),
 };
 

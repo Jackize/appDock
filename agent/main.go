@@ -33,8 +33,15 @@ func main() {
 		log.Fatal("API key is required. Use --api-key flag or AGENT_API_KEY environment variable")
 	}
 
+	// Data directory
+	dataDir := os.Getenv("AGENT_DATA_DIR")
+	if dataDir == "" {
+		dataDir = "./data"
+	}
+
 	// Initialize handlers
 	systemHandler := handlers.NewSystemHandler()
+	nginxHandler := handlers.NewNginxHandler(dataDir)
 	dockerHandler, err := handlers.NewDockerHandler(*dockerSocket)
 	if err != nil {
 		log.Printf("Warning: Could not connect to Docker: %v", err)
@@ -97,6 +104,33 @@ func main() {
 				docker.POST("/volumes", dockerHandler.CreateVolume)
 				docker.DELETE("/volumes/:name", dockerHandler.RemoveVolume)
 			}
+		}
+
+		// Nginx endpoints
+		nginx := api.Group("/nginx")
+		{
+			nginx.GET("/status", nginxHandler.GetStatus)
+			nginx.POST("/install", nginxHandler.Install)
+			nginx.POST("/install-certbot", nginxHandler.InstallCertbot)
+			nginx.POST("/start", nginxHandler.Start)
+			nginx.POST("/stop", nginxHandler.Stop)
+			nginx.POST("/reload", nginxHandler.Reload)
+			nginx.POST("/test", nginxHandler.TestConfig)
+
+			// Domains
+			nginx.GET("/domains", nginxHandler.ListDomains)
+			nginx.GET("/domains/:id", nginxHandler.GetDomain)
+			nginx.POST("/domains", nginxHandler.CreateDomain)
+			nginx.PUT("/domains/:id", nginxHandler.UpdateDomain)
+			nginx.DELETE("/domains/:id", nginxHandler.DeleteDomain)
+			nginx.POST("/domains/:id/enable", nginxHandler.EnableDomain)
+			nginx.POST("/domains/:id/disable", nginxHandler.DisableDomain)
+			nginx.GET("/domains/:id/config", nginxHandler.GetDomainConfig)
+
+			// SSL Certificates
+			nginx.GET("/certificates", nginxHandler.ListCertificates)
+			nginx.POST("/certificates", nginxHandler.RequestCertificate)
+			nginx.DELETE("/certificates/:domain", nginxHandler.RevokeCertificate)
 		}
 	}
 

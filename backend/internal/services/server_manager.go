@@ -11,14 +11,16 @@ import (
 type ServerManager struct {
 	store        *ServerStore
 	localDocker  *DockerService
+	localNginx   *NginxService
 	agentClients map[string]*AgentClient
 	mu           sync.RWMutex
 }
 
-func NewServerManager(store *ServerStore, localDocker *DockerService) *ServerManager {
+func NewServerManager(store *ServerStore, localDocker *DockerService, localNginx *NginxService) *ServerManager {
 	sm := &ServerManager{
 		store:        store,
 		localDocker:  localDocker,
+		localNginx:   localNginx,
 		agentClients: make(map[string]*AgentClient),
 	}
 
@@ -600,4 +602,262 @@ func (m *ServerManager) TestConnection(serverID string) error {
 	}
 
 	return client.Health()
+}
+
+// ==================== Nginx Management ====================
+
+func (m *ServerManager) GetNginxStatus(serverID string) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		return m.localNginx.GetStatus()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	data, err := client.GetNginxStatus()
+	if err != nil {
+		return nil, err
+	}
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func (m *ServerManager) InstallNginx(serverID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.Install()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.InstallNginx()
+}
+
+func (m *ServerManager) InstallCertbot(serverID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.InstallCertbot()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.InstallCertbot()
+}
+
+func (m *ServerManager) StartNginx(serverID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.Start()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.StartNginx()
+}
+
+func (m *ServerManager) StopNginx(serverID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.Stop()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.StopNginx()
+}
+
+func (m *ServerManager) ReloadNginx(serverID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.Reload()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.ReloadNginx()
+}
+
+func (m *ServerManager) TestNginxConfig(serverID string) (bool, string, error) {
+	if m.IsLocal(serverID) {
+		return m.localNginx.TestConfig()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return false, "", ErrServerNotFound
+	}
+	data, err := client.TestNginxConfig()
+	if err != nil {
+		return false, "", err
+	}
+	var result struct {
+		Valid  bool   `json:"valid"`
+		Output string `json:"output"`
+	}
+	json.Unmarshal(data, &result)
+	return result.Valid, result.Output, nil
+}
+
+func (m *ServerManager) ListDomains(serverID string) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		return m.localNginx.ListDomains(), nil
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	data, err := client.ListNginxDomains()
+	if err != nil {
+		return nil, err
+	}
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func (m *ServerManager) GetDomain(serverID, domainID string) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		return m.localNginx.GetDomain(domainID)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	data, err := client.GetNginxDomain(domainID)
+	if err != nil {
+		return nil, err
+	}
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func (m *ServerManager) CreateDomain(serverID string, req models.CreateDomainRequest) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		return m.localNginx.CreateDomain(req)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	data, err := client.CreateNginxDomain(req)
+	if err != nil {
+		return nil, err
+	}
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func (m *ServerManager) UpdateDomain(serverID, domainID string, req models.UpdateDomainRequest) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		return m.localNginx.UpdateDomain(domainID, req)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	data, err := client.UpdateNginxDomain(domainID, req)
+	if err != nil {
+		return nil, err
+	}
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func (m *ServerManager) DeleteDomain(serverID, domainID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.DeleteDomain(domainID)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.DeleteNginxDomain(domainID)
+}
+
+func (m *ServerManager) EnableDomain(serverID, domainID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.EnableDomain(domainID)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.EnableNginxDomain(domainID)
+}
+
+func (m *ServerManager) DisableDomain(serverID, domainID string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.DisableDomain(domainID)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.DisableNginxDomain(domainID)
+}
+
+func (m *ServerManager) GetDomainConfig(serverID, domainID string) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		config, err := m.localNginx.GetDomainConfig(domainID)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"config": config}, nil
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	data, err := client.GetNginxDomainConfig(domainID)
+	if err != nil {
+		return nil, err
+	}
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func (m *ServerManager) ListCertificates(serverID string) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		return m.localNginx.ListCertificates()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	data, err := client.ListNginxCertificates()
+	if err != nil {
+		return nil, err
+	}
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func (m *ServerManager) RequestCertificate(serverID string, domain, email string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.RequestCertificate(domain, email)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.RequestNginxCertificate(map[string]string{
+		"domain": domain,
+		"email":  email,
+	})
+}
+
+func (m *ServerManager) RevokeCertificate(serverID string, domain string) error {
+	if m.IsLocal(serverID) {
+		return m.localNginx.RevokeCertificate(domain)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.RevokeNginxCertificate(domain)
 }
