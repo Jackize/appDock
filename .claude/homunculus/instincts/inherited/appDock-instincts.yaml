@@ -1,0 +1,591 @@
+# Instincts generated from https://github.com/Jackize/appDock
+# Generated: 2026-04-06T09:39:09.026Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: appDock-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Commit Length
+
+## Action
+
+Write moderate-length commit messages (~88 characters)
+
+## Evidence
+
+- Average commit message length: 88 chars
+- Based on 56 commits
+
+---
+id: appDock-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: appDock-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: appDock-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: appDock-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: appDock-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: appDock-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~15x per month
+- Files: frontend/src/*, frontend/src/components/*, frontend/src/components/tabspanel/*
+
+---
+id: appDock-workflow-refactoring
+trigger: "when refactoring code"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Workflow Refactoring
+
+## Action
+
+Follow the refactoring workflow:
+1. Ensure tests pass before refactor
+2. Refactor code structure
+3. Verify tests still pass
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: src/**/*
+
+---
+id: appDock-workflow-add-backend-api-endpoint-and-frontend-integration
+trigger: "when doing add backend api endpoint and frontend integration"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Workflow Add Backend Api Endpoint And Frontend Integration
+
+## Action
+
+Follow the add-backend-api-endpoint-and-frontend-integration workflow:
+1. Create or update backend handler (backend/internal/handlers/feature_handler.go)
+2. Create or update backend service (backend/internal/services/feature_service.go)
+3. Update backend models if needed (backend/internal/models/feature.go)
+4. Update backend/main.go to register new routes or services
+5. Update or add frontend page (frontend/src/pages/Feature.tsx)
+6. Update or add frontend hook (frontend/src/hooks/useFeature.ts)
+7. Update frontend API service (frontend/src/services/api.ts)
+8. Update frontend types (frontend/src/types/index.ts)
+9. Update navigation/UI components as needed (e.g., Sidebar, App.tsx)
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: backend/internal/handlers/*.go, backend/internal/services/*.go, backend/internal/models/*.go
+
+---
+id: appDock-workflow-add-or-enhance-installation-script
+trigger: "when doing add or enhance installation script"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Workflow Add Or Enhance Installation Script
+
+## Action
+
+Follow the add-or-enhance-installation-script workflow:
+1. Create or update installation shell script (install.sh, install-docker.sh, install-agent.sh)
+2. Update README.md with installation instructions
+3. Optionally update Makefile or CI to reference new scripts
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: install.sh, install-docker.sh, install-agent.sh
+
+---
+id: appDock-workflow-ci-cd-workflow-update
+trigger: "when doing ci cd workflow update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Workflow Ci Cd Workflow Update
+
+## Action
+
+Follow the ci-cd-workflow-update workflow:
+1. Edit or add workflow YAML files in .github/workflows/
+2. Update Makefile or build scripts as needed
+3. Optionally update documentation (README.md) to reflect CI/CD changes
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: .github/workflows/*.yml, Makefile, README.md
+
+---
+id: appDock-workflow-add-or-enhance-frontend-feature-or-ui-component
+trigger: "when doing add or enhance frontend feature or ui component"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Workflow Add Or Enhance Frontend Feature Or Ui Component
+
+## Action
+
+Follow the add-or-enhance-frontend-feature-or-ui-component workflow:
+1. Create or update frontend page component (frontend/src/pages/*.tsx)
+2. Create or update frontend hook (frontend/src/hooks/*.ts)
+3. Update or add supporting UI components (frontend/src/components/*.tsx)
+4. Update frontend types (frontend/src/types/index.ts)
+5. Update API service if new endpoints are needed (frontend/src/services/api.ts)
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: frontend/src/pages/*.tsx, frontend/src/hooks/*.ts, frontend/src/components/*.tsx
+
+---
+id: appdock-instinct-camelcase-functions
+trigger: "When naming a function in Go code"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Camelcase Functions
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+- Consistent with Go codebase structure
+
+---
+id: appdock-instinct-pascalcase-classes
+trigger: "When naming a class or struct in Go code"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Pascalcase Classes
+
+## Action
+
+Use PascalCase for class/struct names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: appdock-instinct-screaming-snake-constants
+trigger: "When defining a constant in Go code"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Screaming Snake Constants
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: appdock-instinct-alias-imports
+trigger: "When importing modules in Go code"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Alias Imports
+
+## Action
+
+Use alias import style
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: appdock-instinct-named-exports
+trigger: "When exporting functions, types, or components"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Named Exports
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: appdock-instinct-try-catch-errors
+trigger: "When handling errors in Go or JS/TS code"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Try Catch Errors
+
+## Action
+
+Use try-catch style error handling
+
+## Evidence
+
+- Pattern in errorHandling.style
+
+---
+id: appdock-instinct-separate-tests
+trigger: "When adding or updating tests"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Separate Tests
+
+## Action
+
+Place tests in a separate test directory, not mixed with source files
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+
+---
+id: appdock-instinct-feature-test-doc
+trigger: "When implementing a new feature"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Feature Test Doc
+
+## Action
+
+Add tests for the feature and update documentation after implementation
+
+## Evidence
+
+- feature-development workflow commitSequence
+- Example commits: Add feature implementation, Add tests for feature, Update documentation
+
+---
+id: appdock-instinct-pre-refactor-tests
+trigger: "Before refactoring code"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Pre Refactor Tests
+
+## Action
+
+Ensure all tests pass before starting refactor
+
+## Evidence
+
+- refactoring workflow commitSequence
+- Example: Ensure tests pass before refactor
+
+---
+id: appdock-instinct-post-refactor-tests
+trigger: "After refactoring code"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Post Refactor Tests
+
+## Action
+
+Verify all tests still pass after refactor
+
+## Evidence
+
+- refactoring workflow commitSequence
+- Example: Verify tests still pass
+
+---
+id: appdock-instinct-commit-freeform
+trigger: "When writing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Commit Freeform
+
+## Action
+
+Use a freeform commit message without a strict prefix, describing the change clearly
+
+## Evidence
+
+- Pattern in commits.type: freeform
+- Examples: 'Add Nginx management functionality to AppDock', 'Enhance CI workflow...'
+
+---
+id: appdock-instinct-merge-pr-format
+trigger: "When merging a pull request"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Merge Pr Format
+
+## Action
+
+Use the format 'Merge pull request #[number] from [branch]' in the commit message
+
+## Evidence
+
+- Commit examples: 'Merge pull request #24 from Jackize/nginx'
+
+---
+id: appdock-instinct-add-backend-api-endpoint-and-frontend-integration
+trigger: "When adding a new feature requiring backend API and frontend integration"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Add Backend Api Endpoint And Frontend Integration
+
+## Action
+
+Create or update backend handler, service, models, main.go, and corresponding frontend page, hook, types, API service, and navigation/UI components
+
+## Evidence
+
+- add-backend-api-endpoint-and-frontend-integration workflow
+- Example commit sequences and files
+
+---
+id: appdock-instinct-add-or-enhance-installation-script
+trigger: "When adding or enhancing installation/setup scripts"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Add Or Enhance Installation Script
+
+## Action
+
+Create or update install shell scripts, update README.md, and optionally update Makefile or CI
+
+## Evidence
+
+- add-or-enhance-installation-script workflow
+- Example commit sequences and files
+
+---
+id: appdock-instinct-ci-cd-workflow-update
+trigger: "When updating CI/CD workflows or automation"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Ci Cd Workflow Update
+
+## Action
+
+Edit or add workflow YAML files in .github/workflows, update Makefile/build scripts, and optionally update README.md
+
+## Evidence
+
+- ci-cd-workflow-update workflow
+- Example commit sequences and files
+
+---
+id: appdock-instinct-add-or-enhance-frontend-feature-or-ui-component
+trigger: "When adding or enhancing a frontend UI feature or component"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Add Or Enhance Frontend Feature Or Ui Component
+
+## Action
+
+Create or update frontend page, hook, supporting UI components, types, and API service as needed
+
+## Evidence
+
+- add-or-enhance-frontend-feature-or-ui-component workflow
+- Example commit sequences and files
+
