@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Anchor,
   Globe,
+  Cloud,
   Server,
   Settings,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/networks', icon: Network, label: 'Networks' },
   { to: '/volumes', icon: HardDrive, label: 'Volumes' },
   { to: '/nginx', icon: Globe, label: 'Nginx' },
+  { to: '/dns', icon: Cloud, label: 'DNS' },
   { to: '/servers', icon: Server, label: 'Servers' },
   { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ]

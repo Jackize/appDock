@@ -93,6 +93,10 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         user: state.user,
       }),
+      onRehydrateStorage: () => () => {
+        // Ensure auth state is derived from persisted token on refresh
+        useAuthStore.getState().initialize()
+      },
     }
   )
 )

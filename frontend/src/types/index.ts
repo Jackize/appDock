@@ -237,3 +237,35 @@ export interface RequestCertificateRequest {
   domain: string;
   email: string;
 }
+
+// DNS (Cloudflare) types
+export interface CloudflareZone {
+  id: string;
+  name: string;
+}
+
+export interface CloudflareDNSRecord {
+  id: string;
+  type: string;
+  name: string;
+  content: string;
+  proxied?: boolean | null;
+  ttl: number;
+  priority?: number | null;
+  comment?: string | null;
+  created_on?: string;
+  modified_on?: string;
+}
+
+export interface CloudflareCreateDNSRecordRequest {
+  type: string;
+  name: string;
+  content: string;
+  ttl?: number;
+  proxied?: boolean;
+  priority?: number;
+  comment?: string;
+}
+
+export interface CloudflareUpdateDNSRecordRequest
+  extends CloudflareCreateDNSRecordRequest {}
