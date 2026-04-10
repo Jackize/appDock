@@ -19,6 +19,20 @@ type CloudflareAuthUI = {
   apiKey: string;
 };
 
+function cloudflareAuthParams(auth: CloudflareAuthUI): {
+  token?: string;
+  email?: string;
+  apiKey?: string;
+} {
+  if (auth.token) {
+    return { token: auth.token };
+  }
+  return {
+    email: auth.email || undefined,
+    apiKey: auth.apiKey || undefined,
+  };
+}
+
 export function DNS() {
   const addToast = useAppStore((s) => s.addToast);
 
@@ -77,11 +91,7 @@ export function DNS() {
 
   const verify = async () => {
     try {
-      await dnsAPI.cloudflare.verify({
-        token: auth.token || undefined,
-        email: auth.token ? undefined : auth.email || undefined,
-        apiKey: auth.token ? undefined : auth.apiKey || undefined,
-      });
+      await dnsAPI.cloudflare.verify(cloudflareAuthParams(auth));
       addToast({
         title: "Thành công",
         description: "Xác thực Cloudflare thành công",
@@ -101,9 +111,7 @@ export function DNS() {
     setZonesLoading(true);
     try {
       const z = await dnsAPI.cloudflare.listZones({
-        token: auth.token || undefined,
-        email: auth.token ? undefined : auth.email || undefined,
-        apiKey: auth.token ? undefined : auth.apiKey || undefined,
+        ...cloudflareAuthParams(auth),
         name: zoneQuery || undefined,
       });
       setZones(z);
@@ -124,9 +132,7 @@ export function DNS() {
     setRecordsLoading(true);
     try {
       const r = await dnsAPI.cloudflare.listRecords({
-        token: auth.token || undefined,
-        email: auth.token ? undefined : auth.email || undefined,
-        apiKey: auth.token ? undefined : auth.apiKey || undefined,
+        ...cloudflareAuthParams(auth),
         zoneId: selectedZoneId,
       });
       setRecords(r);
@@ -154,9 +160,7 @@ export function DNS() {
     }
     try {
       await dnsAPI.cloudflare.createRecord({
-        token: auth.token || undefined,
-        email: auth.token ? undefined : auth.email || undefined,
-        apiKey: auth.token ? undefined : auth.apiKey || undefined,
+        ...cloudflareAuthParams(auth),
         zoneId: selectedZoneId,
         data: newRecord,
       });
@@ -186,9 +190,7 @@ export function DNS() {
     if (!selectedZoneId) return;
     try {
       await dnsAPI.cloudflare.deleteRecord({
-        token: auth.token || undefined,
-        email: auth.token ? undefined : auth.email || undefined,
-        apiKey: auth.token ? undefined : auth.apiKey || undefined,
+        ...cloudflareAuthParams(auth),
         zoneId: selectedZoneId,
         recordId,
       });

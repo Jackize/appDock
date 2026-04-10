@@ -389,52 +389,54 @@ export const nginxAPI = {
 
 // ==================== DNS (Cloudflare) ====================
 
+type CloudflareAuthParams = {
+  token?: string;
+  email?: string;
+  apiKey?: string;
+};
+
+/** Builds request headers for Cloudflare API token or Global Key auth. */
+function cloudflareAuthHeaders(
+  params: CloudflareAuthParams,
+): Record<string, string> | undefined {
+  if (params.token) {
+    return { "X-Cloudflare-Token": params.token };
+  }
+  if (params.email && params.apiKey) {
+    return {
+      "X-Cloudflare-Email": params.email,
+      "X-Cloudflare-Key": params.apiKey,
+    };
+  }
+  return undefined;
+}
+
 export const dnsAPI = {
   cloudflare: {
-    verify: (params: { token?: string; email?: string; apiKey?: string }) =>
+    verify: (params: CloudflareAuthParams) =>
       fetchAPIWithExtraHeaders<Record<string, unknown>>(
         `/dns/cloudflare/verify`,
         undefined,
-        params.token
-          ? { "X-Cloudflare-Token": params.token }
-          : params.email && params.apiKey
-            ? {
-                "X-Cloudflare-Email": params.email,
-                "X-Cloudflare-Key": params.apiKey,
-              }
-            : undefined,
+        cloudflareAuthHeaders(params),
       ),
 
-    listZones: (params: {
-      token?: string;
-      email?: string;
-      apiKey?: string;
-      name?: string;
-    }) => {
+    listZones: (params: CloudflareAuthParams & { name?: string }) => {
       const q = new URLSearchParams();
       if (params.name) q.set("name", params.name);
       return fetchAPIWithExtraHeaders<CloudflareZone[]>(
         `/dns/cloudflare/zones${q.toString() ? `?${q.toString()}` : ""}`,
         undefined,
-        params.token
-          ? { "X-Cloudflare-Token": params.token }
-          : params.email && params.apiKey
-            ? {
-                "X-Cloudflare-Email": params.email,
-                "X-Cloudflare-Key": params.apiKey,
-              }
-            : undefined,
+        cloudflareAuthHeaders(params),
       );
     },
 
-    listRecords: (params: {
-      token?: string;
-      email?: string;
-      apiKey?: string;
-      zoneId: string;
-      type?: string;
-      name?: string;
-    }) => {
+    listRecords: (
+      params: CloudflareAuthParams & {
+        zoneId: string;
+        type?: string;
+        name?: string;
+      },
+    ) => {
       const q = new URLSearchParams();
       if (params.type) q.set("type", params.type);
       if (params.name) q.set("name", params.name);
@@ -443,76 +445,45 @@ export const dnsAPI = {
           q.toString() ? `?${q.toString()}` : ""
         }`,
         undefined,
-        params.token
-          ? { "X-Cloudflare-Token": params.token }
-          : params.email && params.apiKey
-            ? {
-                "X-Cloudflare-Email": params.email,
-                "X-Cloudflare-Key": params.apiKey,
-              }
-            : undefined,
+        cloudflareAuthHeaders(params),
       );
     },
 
-    createRecord: (params: {
-      token?: string;
-      email?: string;
-      apiKey?: string;
-      zoneId: string;
-      data: CloudflareCreateDNSRecordRequest;
-    }) =>
+    createRecord: (
+      params: CloudflareAuthParams & {
+        zoneId: string;
+        data: CloudflareCreateDNSRecordRequest;
+      },
+    ) =>
       fetchAPIWithExtraHeaders<CloudflareDNSRecord>(
         `/dns/cloudflare/zones/${params.zoneId}/records`,
         { method: "POST", body: JSON.stringify(params.data) },
-        params.token
-          ? { "X-Cloudflare-Token": params.token }
-          : params.email && params.apiKey
-            ? {
-                "X-Cloudflare-Email": params.email,
-                "X-Cloudflare-Key": params.apiKey,
-              }
-            : undefined,
+        cloudflareAuthHeaders(params),
       ),
 
-    updateRecord: (params: {
-      token?: string;
-      email?: string;
-      apiKey?: string;
-      zoneId: string;
-      recordId: string;
-      data: CloudflareUpdateDNSRecordRequest;
-    }) =>
+    updateRecord: (
+      params: CloudflareAuthParams & {
+        zoneId: string;
+        recordId: string;
+        data: CloudflareUpdateDNSRecordRequest;
+      },
+    ) =>
       fetchAPIWithExtraHeaders<CloudflareDNSRecord>(
         `/dns/cloudflare/zones/${params.zoneId}/records/${params.recordId}`,
         { method: "PUT", body: JSON.stringify(params.data) },
-        params.token
-          ? { "X-Cloudflare-Token": params.token }
-          : params.email && params.apiKey
-            ? {
-                "X-Cloudflare-Email": params.email,
-                "X-Cloudflare-Key": params.apiKey,
-              }
-            : undefined,
+        cloudflareAuthHeaders(params),
       ),
 
-    deleteRecord: (params: {
-      token?: string;
-      email?: string;
-      apiKey?: string;
-      zoneId: string;
-      recordId: string;
-    }) =>
+    deleteRecord: (
+      params: CloudflareAuthParams & {
+        zoneId: string;
+        recordId: string;
+      },
+    ) =>
       fetchAPIWithExtraHeaders<{ message: string }>(
         `/dns/cloudflare/zones/${params.zoneId}/records/${params.recordId}`,
         { method: "DELETE" },
-        params.token
-          ? { "X-Cloudflare-Token": params.token }
-          : params.email && params.apiKey
-            ? {
-                "X-Cloudflare-Email": params.email,
-                "X-Cloudflare-Key": params.apiKey,
-              }
-            : undefined,
+        cloudflareAuthHeaders(params),
       ),
   },
 };

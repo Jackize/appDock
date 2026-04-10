@@ -37,11 +37,9 @@ func (h *DNSHandler) getCloudflareAuth(c *gin.Context) services.CloudflareAuth {
 func (h *DNSHandler) VerifyCloudflare(c *gin.Context) {
 	auth := h.getCloudflareAuth(c)
 	result, err := h.cf.Verify(c.Request.Context(), auth)
-if err != nil {
-		log.Printf("Failed to verify cloudflare token: %v", err) // Or use a structured logger
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to verify Cloudflare credentials."})
 		return
-	}
 	}
 	c.JSON(http.StatusOK, result)
 }

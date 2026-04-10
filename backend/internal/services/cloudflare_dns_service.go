@@ -155,16 +155,22 @@ type CloudflareUser struct {
 	Email string `json:"email"`
 }
 
-func (s *CloudflareDNSService) Verify(ctx context.Context, auth CloudflareAuth) (map[string]any, error) {
+type CloudflareVerifyResult struct {
+	Method string                       `json:"method"`
+	Token  *CloudflareTokenVerifyResult `json:"token,omitempty"`
+	User   *CloudflareUser              `json:"user,omitempty"`
+}
+
+func (s *CloudflareDNSService) Verify(ctx context.Context, auth CloudflareAuth) (*CloudflareVerifyResult, error) {
 	// Token path: /user/tokens/verify
 	if auth.Token != "" {
 		var resp cloudflareResponse[CloudflareTokenVerifyResult]
 		if err := s.do(ctx, auth, http.MethodGet, "/user/tokens/verify", nil, nil, &resp); err != nil {
 			return nil, err
 		}
-		return map[string]any{
-			"method": "token",
-			"token":  resp.Result,
+		return &CloudflareVerifyResult{
+			Method: "token",
+			Token:  &resp.Result,
 		}, nil
 	}
 
@@ -173,9 +179,9 @@ func (s *CloudflareDNSService) Verify(ctx context.Context, auth CloudflareAuth) 
 	if err := s.do(ctx, auth, http.MethodGet, "/user", nil, nil, &resp); err != nil {
 		return nil, err
 	}
-	return map[string]any{
-		"method": "global_key",
-		"user":   resp.Result,
+	return &CloudflareVerifyResult{
+		Method: "global_key",
+		User:   &resp.Result,
 	}, nil
 }
 
