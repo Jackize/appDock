@@ -94,7 +94,7 @@ func (h *DNSHandler) UpdateCloudflareDNSRecord(c *gin.Context) {
 	recordID := c.Param("recordId")
 	var req services.CloudflareUpdateDNSRecordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dữ liệu không hợp lệ: " + err.Error()})
+c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data: " + err.Error()})
 		return
 	}
 	if strings.TrimSpace(req.Type) == "" || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Content) == "" {
