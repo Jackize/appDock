@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Toaster } from "./components/ui/Toaster";
 import { Containers } from "./pages/Containers";
@@ -9,6 +9,7 @@ import { Images } from "./pages/Images";
 import { Login } from "./pages/Login";
 import { Networks } from "./pages/Networks";
 import { Nginx } from "./pages/Nginx";
+import { DNS } from "./pages/DNS";
 import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
 import { Volumes } from "./pages/Volumes";
@@ -18,6 +19,7 @@ import { useAuthStore } from "./stores/authStore";
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -31,14 +33,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
 }
 
+function LoginRoute() {
+  const location = useLocation() as { state?: { from?: { pathname?: string; search?: string } } };
+  const { isAuthenticated } = useAuthStore();
+  const fromPath =
+    location.state?.from?.pathname
+      ? `${location.state.from.pathname}${location.state.from.search || ""}`
+      : "/";
+  return isAuthenticated ? <Navigate to={fromPath} replace /> : <Login />;
+}
+
 function App() {
-  const { isAuthenticated, isLoading, setAuthEnabled, setLoading, initialize } =
+  const { isLoading, setAuthEnabled, setLoading, initialize } =
     useAuthStore();
 
   // Check auth status on mount
@@ -48,6 +60,8 @@ function App() {
         // First check if auth is enabled on the server
         const status = await authAPI.getStatus();
         setAuthEnabled(status.enabled);
+        // Initialize from persisted token as early as possible
+        initialize();
 
         // If auth is enabled and we have a stored token, validate it
         if (status.enabled) {
@@ -56,7 +70,6 @@ function App() {
             try {
               // Try to get user info to validate token
               await authAPI.getMe();
-              initialize();
             } catch {
               // Token is invalid, will redirect to login
               useAuthStore.getState().logout();
@@ -95,7 +108,7 @@ function App() {
         {/* Login route */}
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+          element={<LoginRoute />}
         />
 
         {/* Protected routes */}
@@ -111,6 +124,7 @@ function App() {
                   <Route path="/networks" element={<Networks />} />
                   <Route path="/volumes" element={<Volumes />} />
                   <Route path="/nginx" element={<Nginx />} />
+                  <Route path="/dns" element={<DNS />} />
                   <Route path="/servers" element={<Servers />} />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>

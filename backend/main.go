@@ -41,7 +41,7 @@ func main() {
 	} else {
 		log.Println("⚠️  Docker is not running - system stats will still work, but Docker operations will be unavailable")
 	}
-	
+
 	// Start background health check to detect Docker status changes
 	dockerService.OnStatusChange(func(connected bool) {
 		if connected {
@@ -88,6 +88,8 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authService)
 	serverHandler := handlers.NewServerHandler(serverStore, serverManager)
 	nginxHandler := handlers.NewNginxHandler(serverManager)
+	cloudflareDNSService := services.NewCloudflareDNSService()
+	dnsHandler := handlers.NewDNSHandler(cloudflareDNSService)
 
 	// Khởi tạo Gin router
 	router := gin.Default()
@@ -96,7 +98,15 @@ func main() {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization", "X-Server-ID"}
+	config.AllowHeaders = []string{
+		"Origin",
+		"Content-Type",
+		"Authorization",
+		"X-Server-ID",
+		"X-Cloudflare-Token",
+		"X-Cloudflare-Email",
+		"X-Cloudflare-Key",
+	}
 	router.Use(cors.New(config))
 
 	// Auth status và login (public routes - không cần auth)
@@ -196,6 +206,20 @@ func main() {
 			nginx.GET("/certificates", nginxHandler.ListCertificates)
 			nginx.POST("/certificates", nginxHandler.RequestCertificate)
 			nginx.DELETE("/certificates/:domain", nginxHandler.RevokeCertificate)
+		}
+
+		// DNS management (Cloudflare)
+		dns := api.Group("/dns")
+		{
+			cf := dns.Group("/cloudflare")
+			{
+				cf.GET("/verify", dnsHandler.VerifyCloudflare)
+				cf.GET("/zones", dnsHandler.ListCloudflareZones)
+				cf.GET("/zones/:zoneId/records", dnsHandler.ListCloudflareDNSRecords)
+				cf.POST("/zones/:zoneId/records", dnsHandler.CreateCloudflareDNSRecord)
+				cf.PUT("/zones/:zoneId/records/:recordId", dnsHandler.UpdateCloudflareDNSRecord)
+				cf.DELETE("/zones/:zoneId/records/:recordId", dnsHandler.DeleteCloudflareDNSRecord)
+			}
 		}
 	}
 
