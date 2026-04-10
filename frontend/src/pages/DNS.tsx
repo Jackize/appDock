@@ -334,7 +334,7 @@ export function DNS() {
               disabled={!canAuth || !selectedZoneId}
             >
               <RefreshCw className="w-4 h-4" />
-              Tải records
+Load records
             </Button>
             <div className="text-sm text-text-muted">
               {selectedZone ? `Zone: ${selectedZone.name}` : ""}
