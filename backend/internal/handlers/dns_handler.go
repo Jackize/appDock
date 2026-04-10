@@ -117,5 +117,5 @@ func (h *DNSHandler) DeleteCloudflareDNSRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "DNS record đã được xóa"})
+c.JSON(http.StatusOK, gin.H{"message": "DNS record deleted successfully"})
 }
