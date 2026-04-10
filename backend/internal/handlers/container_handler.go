@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"appdock/internal/middleware"
 	"appdock/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -116,11 +117,19 @@ func (h *ContainerHandler) GetContainerStats(c *gin.Context) {
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Cho phép tất cả origins trong dev
-	},
+	CheckOrigin:     middleware.WebSocketCheckOrigin(),
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+}
+
+func upgradeWebSocket(c *gin.Context) (*websocket.Conn, error) {
+	hdr := http.Header{}
+	if v, ok := c.Get("ws_sec_subprotocol_reply"); ok {
+		if s, ok2 := v.(string); ok2 && s != "" {
+			hdr.Set("Sec-Websocket-Protocol", s)
+		}
+	}
+	return upgrader.Upgrade(c.Writer, c.Request, hdr)
 }
 
 // StreamLogs stream logs qua WebSocket (only supports local server)
@@ -133,7 +142,7 @@ func (h *ContainerHandler) StreamLogs(c *gin.Context) {
 
 	id := c.Param("id")
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := upgradeWebSocket(c)
 	if err != nil {
 		return
 	}
@@ -221,7 +230,7 @@ func (h *ContainerHandler) ExecTerminal(c *gin.Context) {
 
 	id := c.Param("id")
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := upgradeWebSocket(c)
 	if err != nil {
 		return
 	}

@@ -277,7 +277,7 @@ func main() {
 
 	// Log auth status
 	if authService.IsAuthEnabled() {
-		log.Printf("🔐 Authentication: ENABLED (user: %s) (password: %s)", authService.GetCurrentUser(), authService.GetPassword())
+		log.Printf("🔐 Authentication: ENABLED (user: %s)", authService.GetCurrentUser())
 	} else {
 		log.Printf("⚠️  Authentication: DISABLED")
 	}
