@@ -98,11 +98,12 @@ export function TerminalView({ containerId, containerName, isActive = true }: Te
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const token = getAuthToken();
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-    const wsUrl = `${protocol}//${host}/ws/containers/${containerId}/exec${tokenParam}`;
+    const wsUrl = `${protocol}//${host}/ws/containers/${containerId}/exec`;
 
     const connect = () => {
-      wsRef.current = new WebSocket(wsUrl);
+      wsRef.current = token
+        ? new WebSocket(wsUrl, token)
+        : new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
         setIsConnected(true);

@@ -7,6 +7,7 @@ import (
 	"appdock/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 // AuthMiddleware tạo middleware xác thực JWT
@@ -58,8 +59,8 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 	}
 }
 
-// WebSocketAuthMiddleware xác thực cho WebSocket connections
-// Token được truyền qua query parameter vì WebSocket không support custom headers dễ dàng
+// WebSocketAuthMiddleware xác thực cho WebSocket connections.
+// Token ưu tiên: Sec-WebSocket-Protocol (tránh lộ token trong URL), sau đó ?token=, rồi Authorization.
 func WebSocketAuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Nếu auth bị tắt, cho phép tất cả requests
@@ -68,18 +69,7 @@ func WebSocketAuthMiddleware(authService *services.AuthService) gin.HandlerFunc 
 			return
 		}
 
-		// Lấy token từ query parameter
-		tokenString := c.Query("token")
-		if tokenString == "" {
-			// Thử lấy từ header (cho các clients hỗ trợ)
-			authHeader := c.GetHeader("Authorization")
-			if authHeader != "" {
-				parts := strings.SplitN(authHeader, " ", 2)
-				if len(parts) == 2 && parts[0] == "Bearer" {
-					tokenString = parts[1]
-				}
-			}
-		}
+		tokenString, wsProtoReply := websocketTokenFromRequest(c)
 
 		if tokenString == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -102,7 +92,39 @@ func WebSocketAuthMiddleware(authService *services.AuthService) gin.HandlerFunc 
 		// Lưu thông tin user vào context
 		c.Set("username", claims.Username)
 		c.Set("claims", claims)
+		if wsProtoReply != "" {
+			c.Set("ws_sec_subprotocol_reply", wsProtoReply)
+		}
 
 		c.Next()
 	}
+}
+
+// websocketTokenFromRequest returns the JWT and, if the client offered it as a WebSocket
+// subprotocol, the same string for Sec-WebSocket-Protocol on the upgrade response.
+func websocketTokenFromRequest(c *gin.Context) (token string, secWebSocketProtocolReply string) {
+	for _, p := range websocket.Subprotocols(c.Request) {
+		if isLikelyJWT(p) {
+			return p, p
+		}
+	}
+	if q := c.Query("token"); q != "" {
+		return q, ""
+	}
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			return parts[1], ""
+		}
+	}
+	return "", ""
+}
+
+func isLikelyJWT(s string) bool {
+	// Compact JWT: header.payload.signature
+	if strings.Count(s, ".") != 2 {
+		return false
+	}
+	return len(s) >= 20
 }

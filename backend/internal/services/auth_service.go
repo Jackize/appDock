@@ -136,11 +136,6 @@ func (s *AuthService) GetCurrentUser() string {
 	return s.username
 }
 
-// GetPassword trả về password hiện tại (cho display)
-func (s *AuthService) GetPassword() string {
-	return s.password
-}
-
 // ChangePassword đổi mật khẩu
 func (s *AuthService) ChangePassword(currentPassword, newPassword string) error {
 	// Kiểm tra mật khẩu hiện tại

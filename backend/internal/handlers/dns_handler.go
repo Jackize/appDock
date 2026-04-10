@@ -73,11 +73,11 @@ func (h *DNSHandler) CreateCloudflareDNSRecord(c *gin.Context) {
 	zoneID := c.Param("zoneId")
 	var req services.CloudflareCreateDNSRecordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data: " + err.Error()})
 		return
 	}
 	if strings.TrimSpace(req.Type) == "" || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Content) == "" {
-c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields: type, name, content"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields: type, name, content"})
 		return
 	}
 	created, err := h.cf.CreateDNSRecord(c.Request.Context(), auth, zoneID, req)
@@ -94,11 +94,11 @@ func (h *DNSHandler) UpdateCloudflareDNSRecord(c *gin.Context) {
 	recordID := c.Param("recordId")
 	var req services.CloudflareUpdateDNSRecordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data: " + err.Error()})
 		return
 	}
 	if strings.TrimSpace(req.Type) == "" || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Content) == "" {
-c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields: type, name, content"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields: type, name, content"})
 		return
 	}
 	updated, err := h.cf.UpdateDNSRecord(c.Request.Context(), auth, zoneID, recordID, req)
@@ -117,5 +117,5 @@ func (h *DNSHandler) DeleteCloudflareDNSRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-c.JSON(http.StatusOK, gin.H{"message": "DNS record deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "DNS record deleted successfully"})
 }
