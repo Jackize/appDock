@@ -23,17 +23,20 @@ var defaultWSAllowedOrigins = []string{
 // (same-origin deployments, including HTTPS/WSS).
 // Set APPDOCK_WS_ALLOW_INSECURE_ORIGINS=true only for exceptional debugging (allows any Origin).
 func WebSocketCheckOrigin() func(r *http.Request) bool {
+	allowInsecure := strings.TrimSpace(os.Getenv("APPDOCK_WS_ALLOW_INSECURE_ORIGINS")) == "true"
+	allowedOrigins := wsAllowedOriginsList()
+
 	return func(r *http.Request) bool {
-		if strings.TrimSpace(os.Getenv("APPDOCK_WS_ALLOW_INSECURE_ORIGINS")) == "true" {
+		if allowInsecure {
 			return true
 		}
+
 		origin := strings.TrimSpace(r.Header.Get("Origin"))
 		if origin == "" {
 			return true
 		}
 
-		allowed := wsAllowedOriginsList()
-		for _, o := range allowed {
+		for _, o := range allowedOrigins {
 			if strings.EqualFold(origin, o) {
 				return true
 			}
@@ -43,6 +46,7 @@ func WebSocketCheckOrigin() func(r *http.Request) bool {
 		if err != nil {
 			return false
 		}
+
 		return strings.EqualFold(u.Host, r.Host)
 	}
 }
