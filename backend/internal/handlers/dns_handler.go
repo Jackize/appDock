@@ -77,7 +77,7 @@ c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data: " + err.Error()})
 		return
 	}
 	if strings.TrimSpace(req.Type) == "" || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Content) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Thiếu thông tin: type, name, content"})
+c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields: type, name, content"})
 		return
 	}
 	created, err := h.cf.CreateDNSRecord(c.Request.Context(), auth, zoneID, req)
