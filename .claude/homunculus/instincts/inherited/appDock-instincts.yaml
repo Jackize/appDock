@@ -1,0 +1,337 @@
+# Instincts generated from https://github.com/Jackize/appDock
+# Generated: 2026-04-13T06:55:08.746Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: appDock-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Commit Length
+
+## Action
+
+Write moderate-length commit messages (~57 characters)
+
+## Evidence
+
+- Average commit message length: 57 chars
+- Based on 1 commits
+
+---
+id: appDock-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: appDock-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: appDock-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: appDock-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: 
+
+---
+id: appDock-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/Jackize/appDock
+---
+
+# AppDock Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: appdock-instinct-file-naming
+trigger: "When creating a new Go source file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct File Naming
+
+## Action
+
+Name the file using snake_case
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.files
+
+---
+id: appdock-instinct-function-naming
+trigger: "When defining a new function in Go"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: appdock-instinct-class-naming
+trigger: "When defining a new class or struct in Go"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Class Naming
+
+## Action
+
+Name the class/struct using PascalCase
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: appdock-instinct-constant-naming
+trigger: "When declaring a constant in Go"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: appdock-instinct-import-alias
+trigger: "When importing a package in Go"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Import Alias
+
+## Action
+
+Use an alias for the import
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: appdock-instinct-export-named
+trigger: "When exporting functions or variables in Go"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Export Named
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: appdock-instinct-test-location
+trigger: "When adding new tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Test Location
+
+## Action
+
+Place test files in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+
+---
+id: appdock-instinct-module-organization
+trigger: "When organizing code modules"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Module Organization
+
+## Action
+
+Organize modules by type (e.g., controllers, services, models)
+
+## Evidence
+
+- Pattern in architecture.moduleOrganization
+
+---
+id: appdock-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Commit Format
+
+## Action
+
+Write a freeform message without a prefix, average length around 57 characters
+
+## Evidence
+
+- Pattern in commits.type
+- Pattern in commits.averageLength
+- Example: 'Add security monitoring features and network snapshot API'
+
+---
+id: appdock-instinct-custom-error-class
+trigger: "When handling errors in Go"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Custom Error Class
+
+## Action
+
+Define and use custom error classes
+
+## Evidence
+
+- Pattern in errorHandling.customErrorClasses
+
+---
+id: appdock-instinct-try-catch
+trigger: "When handling errors in Go code"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: Jackize/appDock
+---
+
+# Appdock Instinct Try Catch
+
+## Action
+
+Use try-catch style error handling
+
+## Evidence
+
+- Pattern in errorHandling.style
+
