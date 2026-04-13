@@ -111,6 +111,31 @@ func (m *ServerManager) IsLocal(serverID string) bool {
 	return serverID == "" || serverID == "local"
 }
 
+// ListServerIDs returns all configured server IDs (including local).
+func (m *ServerManager) ListServerIDs() []string {
+	if m.store == nil {
+		return []string{"local"}
+	}
+	list := m.store.List()
+	out := make([]string, 0, len(list))
+	for _, s := range list {
+		out = append(out, s.ID)
+	}
+	return out
+}
+
+// ServerDisplayName returns a human-readable name for UI / AI prompts.
+func (m *ServerManager) ServerDisplayName(serverID string) string {
+	if m.store == nil {
+		return serverID
+	}
+	s, err := m.store.Get(serverID)
+	if err != nil {
+		return serverID
+	}
+	return s.Name
+}
+
 func (m *ServerManager) GetLocalDocker() *DockerService {
 	return m.localDocker
 }
@@ -587,6 +612,17 @@ func (m *ServerManager) RemoveVolume(serverID, volumeName string, force bool) er
 }
 
 // ==================== Test Connection ====================
+
+func (m *ServerManager) GetNetworkSnapshot(serverID string) (*NetworkSnapshot, error) {
+	if m.IsLocal(serverID) {
+		return BuildLocalNetworkSnapshot()
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+	return client.GetNetworkSnapshot()
+}
 
 func (m *ServerManager) TestConnection(serverID string) error {
 	if m.IsLocal(serverID) {

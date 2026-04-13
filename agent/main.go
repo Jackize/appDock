@@ -41,6 +41,7 @@ func main() {
 
 	// Initialize handlers
 	systemHandler := handlers.NewSystemHandler()
+	networkHandler := handlers.NewNetworkHandler()
 	nginxHandler := handlers.NewNginxHandler(dataDir)
 	dockerHandler, err := handlers.NewDockerHandler(*dockerSocket)
 	if err != nil {
@@ -69,6 +70,7 @@ func main() {
 		// System endpoints
 		api.GET("/system/stats", systemHandler.GetStats)
 		api.GET("/system/info", systemHandler.GetInfo)
+		api.GET("/system/network", networkHandler.GetNetwork)
 
 		// Docker endpoints
 		if dockerHandler != nil {

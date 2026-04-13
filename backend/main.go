@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -74,6 +75,35 @@ func main() {
 	}
 	serverManager := services.NewServerManager(serverStore, dockerService, nginxService)
 	defer statsHistoryService.Close()
+
+	securityReportStore, secStoreErr := services.NewSecurityReportStore(dataDir)
+	var securityApp *services.SecurityApp
+	var securityHandler *handlers.SecurityHandler
+	if secStoreErr != nil {
+		log.Printf("⚠️  Security report store unavailable: %v", secStoreErr)
+	} else {
+		geminiSec := services.NewGeminiSecurityService()
+		securityApp = services.NewSecurityApp(serverManager, securityReportStore, geminiSec)
+		securityHandler = handlers.NewSecurityHandler(securityApp, serverManager)
+		if geminiSec.Enabled() {
+			log.Printf("🤖 Gemini security analysis: API key configured")
+		} else {
+			log.Printf("📝 GEMINI_API_KEY not set — AI analysis and assistant chat disabled until configured")
+		}
+	}
+
+	securityScanCtx, securityScanCancel := context.WithCancel(context.Background())
+	defer securityScanCancel()
+	if securityApp != nil {
+		scanSec := 300
+		if v := os.Getenv("APPDOCK_SECURITY_SCAN_INTERVAL"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				scanSec = n
+			}
+		}
+		go runSecurityScanLoop(securityScanCtx, securityApp, time.Duration(scanSec)*time.Second)
+		log.Printf("🔒 Security network scan interval: %ds", scanSec)
+	}
 
 	// Start stats collection goroutine (only for local server)
 	statsCollectorCtx, statsCollectorCancel := context.WithCancel(context.Background())
@@ -221,6 +251,18 @@ func main() {
 				cf.DELETE("/zones/:zoneId/records/:recordId", dnsHandler.DeleteCloudflareDNSRecord)
 			}
 		}
+
+		if securityHandler != nil {
+			sec := api.Group("/security")
+			{
+				sec.GET("/snapshot", securityHandler.GetSnapshot)
+				sec.GET("/reports", securityHandler.ListReports)
+				sec.GET("/reports/:id", securityHandler.GetReport)
+				sec.PATCH("/reports/:id", securityHandler.PatchReport)
+				sec.POST("/analyze", securityHandler.Analyze)
+				sec.POST("/chat", securityHandler.Chat)
+			}
+		}
 	}
 
 	// WebSocket cho real-time logs và terminal (protected với WebSocket auth)
@@ -304,6 +346,7 @@ func main() {
 
 	log.Println("🛑 Đang tắt server...")
 
+	securityScanCancel()
 	// Stop stats collector
 	statsCollectorCancel()
 
@@ -318,6 +361,20 @@ func main() {
 }
 
 // collectStats periodically collects system stats and adds to history
+func runSecurityScanLoop(ctx context.Context, app *services.SecurityApp, every time.Duration) {
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	app.RunBackgroundScanForAllServers()
+	for {
+		select {
+		case <-ticker.C:
+			app.RunBackgroundScanForAllServers()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 func collectStats(ctx context.Context, sm *services.ServerManager, shs *services.StatsHistoryService) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
