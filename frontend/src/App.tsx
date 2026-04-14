@@ -12,6 +12,7 @@ import { Nginx } from "./pages/Nginx";
 import { DNS } from "./pages/DNS";
 import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
+import Security from "./pages/Security";
 import { Volumes } from "./pages/Volumes";
 import { authAPI } from "./services/api";
 import { useAuthStore } from "./stores/authStore";
@@ -126,6 +127,7 @@ function App() {
                   <Route path="/nginx" element={<Nginx />} />
                   <Route path="/dns" element={<DNS />} />
                   <Route path="/servers" element={<Servers />} />
+                  <Route path="/security" element={<Security />} />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>
               </Layout>

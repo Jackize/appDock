@@ -132,6 +132,18 @@ func (c *AgentClient) GetSystemInfo() (*AgentSystemInfo, error) {
 	return &info, nil
 }
 
+func (c *AgentClient) GetNetworkSnapshot() (*NetworkSnapshot, error) {
+	data, err := c.doRequest("GET", "/api/system/network", nil)
+	if err != nil {
+		return nil, err
+	}
+	var snap NetworkSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil {
+		return nil, err
+	}
+	return &snap, nil
+}
+
 // ==================== Docker ====================
 
 func (c *AgentClient) GetDockerInfo() (json.RawMessage, error) {

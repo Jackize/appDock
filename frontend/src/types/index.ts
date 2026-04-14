@@ -269,3 +269,43 @@ export interface CloudflareCreateDNSRecordRequest {
 
 export interface CloudflareUpdateDNSRecordRequest
   extends CloudflareCreateDNSRecordRequest {}
+
+// Security monitoring
+export interface NetworkSnapshot {
+  hostname: string;
+  timestamp: number;
+  tcpCount: number;
+  udpCount: number;
+  tcpByStatus: Record<string, number>;
+  topRemotePeers: { addr: string; count: number }[];
+  uniqueRemoteIps: number;
+  interfaces: {
+    name: string;
+    bytesSent: number;
+    bytesRecv: number;
+    packetsSent: number;
+    packetsRecv: number;
+  }[];
+}
+
+export type SecurityReportStatus = "open" | "acknowledged" | "resolved";
+
+export interface SecurityReport {
+  id: string;
+  serverId: string;
+  createdAt: string;
+  severity: string;
+  title: string;
+  source: string;
+  metricsSnapshot: unknown;
+  deltaSummary?: string;
+  heuristicNotes?: string;
+  aiSummary?: string;
+  aiEvidence?: string;
+  aiAttackHypothesis?: string;
+  aiConfidence?: number;
+  recommendedActions?: string[];
+  aiResponseRaw?: string;
+  status: SecurityReportStatus;
+  notes?: string;
+}

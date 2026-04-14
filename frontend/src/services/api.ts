@@ -23,6 +23,8 @@ import type {
   UpdateDomainRequest,
   UpdateServerRequest,
   Volume,
+  NetworkSnapshot,
+  SecurityReport,
 } from "@/types";
 
 const API_BASE = "/api";
@@ -410,6 +412,49 @@ function cloudflareAuthHeaders(
   }
   return undefined;
 }
+
+export const securityAPI = {
+  getSnapshot: () => fetchAPI<NetworkSnapshot>("/security/snapshot"),
+
+  listReports: (params?: {
+    serverId?: string;
+    severity?: string;
+    status?: string;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.serverId) q.set("serverId", params.serverId);
+    if (params?.severity) q.set("severity", params.severity);
+    if (params?.status) q.set("status", params.status);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return fetchAPI<SecurityReport[]>(`/security/reports${suffix}`);
+  },
+
+  getReport: (id: string) => fetchAPI<SecurityReport>(`/security/reports/${id}`),
+
+  patchReport: (
+    id: string,
+    body: { status?: SecurityReport["status"]; notes?: string },
+  ) =>
+    fetchAPI<SecurityReport>(`/security/reports/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  analyze: (body?: { serverId?: string; force?: boolean }) =>
+    fetchAPI<SecurityReport>("/security/analyze", {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
+
+  chat: (body: {
+    messages: { role: string; content: string }[];
+    reportId?: string;
+  }) =>
+    fetchAPI<{ reply: string }>("/security/chat", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};
 
 export const dnsAPI = {
   cloudflare: {
