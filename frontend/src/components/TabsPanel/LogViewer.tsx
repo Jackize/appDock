@@ -79,12 +79,31 @@ export function LogViewer({ containerId, containerName }: LogViewerProps) {
           { headers }
         );
         if (!response.ok) throw new Error("Failed to fetch logs");
-        
-        const data = await response.json();
+
+        // Some agents return 204/empty body for containers with no output yet.
+        // Treat that as "no logs" instead of crashing on JSON parsing.
+        const raw = await response.text();
+        if (!raw.trim()) {
+          if (isMountedRef.current) setStatus((s) => (s === "loading" ? "static" : s));
+          return;
+        }
+
+        let data: unknown;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          // Fallback: handle plain-text logs if backend doesn't wrap in JSON
+          data = { logs: raw };
+        }
         if (!isMountedRef.current) return;
         
-        if (data.logs) {
-          const lines = data.logs.split("\n").filter((l: string) => l.trim());
+        const logsText =
+          typeof (data as { logs?: unknown })?.logs === "string"
+            ? ((data as { logs?: string }).logs as string)
+            : "";
+
+        if (logsText) {
+          const lines = logsText.split("\n").filter((l: string) => l.trim());
           const parsedLogs = lines
             .map((line: string) => parseLogLine(line))
             .filter((log: LogMessage | null): log is LogMessage => log !== null);
