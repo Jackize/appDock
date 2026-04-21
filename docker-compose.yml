@@ -12,8 +12,8 @@ services:
       dockerfile: Dockerfile
     image: appdock:latest
     container_name: appdock
-    ports:
-      - "8080:8080"
+    # ports:
+    #   - "8080:8080"
     volumes:
       # Mount Docker socket để app có thể quản lý Docker
       # Linux/macOS: /var/run/docker.sock
