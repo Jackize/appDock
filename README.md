@@ -28,7 +28,35 @@ This will:
 
 Access UI at **http://localhost:8080**
 
-### Option 2: Docker Run
+### Option 2: One-liner Install (Docker Compose - Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install-docker.sh | sudo bash
+```
+
+This will:
+- Run AppDock as a Docker container (managed by `docker compose`)
+- Create a small deployment folder at `/opt/appdock-docker`
+- Persist AppDock data to `/var/lib/appdock`
+- Start AppDock on port **8080**
+
+Access UI at **http://localhost:8080**
+
+**Useful commands:**
+
+```bash
+# Logs
+docker logs -f appdock
+
+# Update to newest image
+docker compose -f /opt/appdock-docker/docker-compose.yml pull
+docker compose -f /opt/appdock-docker/docker-compose.yml up -d
+
+# Uninstall (keeps /var/lib/appdock)
+curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/install-docker.sh | sudo bash -s -- --uninstall
+```
+
+### Option 3: Docker Run
 
 ```bash
 docker run -d \
@@ -40,7 +68,7 @@ docker run -d \
 
 Access UI at **http://localhost:8080**
 
-### Option 3: Docker Compose
+### Option 4: Docker Compose (manual)
 
 ```bash
 # Download docker-compose.yml
@@ -50,7 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/Jackize/appDock/main/docker-compose
 docker compose up -d
 ```
 
-### Option 4: Clone & Build
+### Option 5: Clone & Build
 
 ```bash
 git clone https://github.com/Jackize/appDock.git
