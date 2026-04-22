@@ -383,7 +383,7 @@ func pkceChallengeS256(verifier string) string {
 }
 
 func setShortLivedCookie(c *gin.Context, name, value string, maxAgeSeconds int) {
-	c.SetCookie(name, value, maxAgeSeconds, "/", "", false, true)
+	c.SetCookie(name, value, maxAgeSeconds, "/", "", c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https", true)
 }
 
 func clearCookie(c *gin.Context, name string) {
