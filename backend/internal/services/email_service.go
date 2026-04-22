@@ -14,12 +14,12 @@ type EmailService interface {
 func NewEmailService() (EmailService, error) {
 	provider := os.Getenv("APPDOCK_EMAIL_PROVIDER")
 	if provider == "" {
-		provider = "sendgrid"
+		provider = "resend"
 	}
 
 	switch provider {
-	case "sendgrid":
-		return NewSendGridEmailService()
+	case "resend":
+		return NewResendEmailService()
 	default:
 		return nil, errors.New("unsupported email provider: " + provider)
 	}
