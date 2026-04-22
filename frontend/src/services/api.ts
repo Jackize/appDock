@@ -162,6 +162,45 @@ export const authAPI = {
     }),
 };
 
+// ==================== INVITES / MEMBERS ====================
+
+export type InviteStatus = "pending" | "accepted" | "revoked";
+
+export type Invite = {
+  email: string;
+  status: InviteStatus;
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt?: string | null;
+  revokedAt?: string | null;
+  invitedBy?: string;
+};
+
+export const invitesAPI = {
+  list: () =>
+    fetchAPI<{ invites: Invite[] }>("/invites", {
+      method: "GET",
+    }),
+
+  create: (email: string) =>
+    fetchAPI<{
+      email: string;
+      status: InviteStatus;
+      expiresAt: string;
+      inviteLink: string;
+      emailError?: string;
+    }>("/invites", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  revoke: (email: string) =>
+    fetchAPI<{ email: string; status: InviteStatus }>(
+      `/invites/${encodeURIComponent(email)}/revoke`,
+      { method: "POST" },
+    ),
+};
+
 // ==================== SYSTEM ====================
 
 export interface ChartPoint {

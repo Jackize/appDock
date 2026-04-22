@@ -1,23 +1,43 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 
 	"appdock/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/idtoken"
 )
 
 // AuthHandler xử lý các request liên quan đến authentication
 type AuthHandler struct {
 	authService *services.AuthService
+	inviteStore *services.InviteStore
 }
 
 // NewAuthHandler tạo AuthHandler mới
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+func NewAuthHandler(authService *services.AuthService, inviteStore *services.InviteStore) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		inviteStore: inviteStore,
 	}
+}
+
+type googleIDTokenClaims struct {
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Name          string `json:"name"`
+	Sub           string `json:"sub"`
 }
 
 // LoginRequest request body cho login
@@ -199,4 +219,184 @@ func extractToken(c *gin.Context) string {
 		return bearerToken[7:]
 	}
 	return ""
+}
+
+func (h *AuthHandler) GoogleStart(c *gin.Context) {
+	clientID := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
+	clientSecret := os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Google OAuth chưa được cấu hình"})
+		return
+	}
+
+	baseURL := publicBaseURL(c)
+	redirectURL := baseURL + "/api/auth/google/callback"
+
+	conf := &oauth2.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  redirectURL,
+		Scopes:       []string{"openid", "email", "profile"},
+		Endpoint:     google.Endpoint,
+	}
+
+	state, err := randomB64URL(32)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể tạo state"})
+		return
+	}
+
+	verifier, err := randomB64URL(64)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể tạo verifier"})
+		return
+	}
+	challenge := pkceChallengeS256(verifier)
+
+	setShortLivedCookie(c, "appdock_oauth_state", state, 300)
+	setShortLivedCookie(c, "appdock_oauth_verifier", verifier, 300)
+
+	authURL := conf.AuthCodeURL(
+		state,
+		oauth2.AccessTypeOnline,
+		oauth2.SetAuthURLParam("code_challenge", challenge),
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oauth2.SetAuthURLParam("prompt", "select_account"),
+	)
+
+	c.Redirect(http.StatusFound, authURL)
+}
+
+func (h *AuthHandler) GoogleCallback(c *gin.Context) {
+	clientID := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
+	clientSecret := os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Google OAuth chưa được cấu hình"})
+		return
+	}
+
+	code := c.Query("code")
+	state := c.Query("state")
+	if code == "" || state == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Thiếu code/state"})
+		return
+	}
+
+	stateCookie, _ := c.Cookie("appdock_oauth_state")
+	verifier, _ := c.Cookie("appdock_oauth_verifier")
+	clearCookie(c, "appdock_oauth_state")
+	clearCookie(c, "appdock_oauth_verifier")
+
+	if stateCookie == "" || stateCookie != state {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "State không hợp lệ"})
+		return
+	}
+	if verifier == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Verifier không hợp lệ"})
+		return
+	}
+
+	baseURL := publicBaseURL(c)
+	redirectURL := baseURL + "/api/auth/google/callback"
+
+	conf := &oauth2.Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  redirectURL,
+		Scopes:       []string{"openid", "email", "profile"},
+		Endpoint:     google.Endpoint,
+	}
+
+	ctx := c.Request.Context()
+	tok, err := conf.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", verifier))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Không thể đổi code"})
+		return
+	}
+
+	rawIDToken, _ := tok.Extra("id_token").(string)
+	if rawIDToken == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Thiếu id_token"})
+		return
+	}
+
+	payload, err := idtoken.Validate(ctx, rawIDToken, clientID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "id_token không hợp lệ"})
+		return
+	}
+
+	var claims googleIDTokenClaims
+	if err := mapToStruct(payload.Claims, &claims); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Không thể đọc claims"})
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(claims.Email))
+	if email == "" || !claims.EmailVerified {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Email Google chưa được xác minh"})
+		return
+	}
+
+	// Invite-only gate
+	if h.inviteStore == nil || !h.inviteStore.IsEmailAllowed(email) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Email chưa được mời"})
+		return
+	}
+
+	appToken, err := h.authService.IssueToken(email, email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể tạo token"})
+		return
+	}
+
+	// Redirect back to frontend (HashRouter) with token.
+	frontendURL := baseURL + "/#/auth/callback?token=" + url.QueryEscape(appToken)
+	c.Redirect(http.StatusFound, frontendURL)
+}
+
+func publicBaseURL(c *gin.Context) string {
+	if v := strings.TrimRight(os.Getenv("APPDOCK_PUBLIC_URL"), "/"); v != "" {
+		return v
+	}
+	scheme := "http"
+	if xf := c.GetHeader("X-Forwarded-Proto"); xf != "" {
+		scheme = xf
+	} else if c.Request.TLS != nil {
+		scheme = "https"
+	}
+	host := c.Request.Host
+	return scheme + "://" + host
+}
+
+func randomB64URL(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func pkceChallengeS256(verifier string) string {
+	sum := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+func setShortLivedCookie(c *gin.Context, name, value string, maxAgeSeconds int) {
+	c.SetCookie(name, value, maxAgeSeconds, "/", "", false, true)
+}
+
+func clearCookie(c *gin.Context, name string) {
+	c.SetCookie(name, "", -1, "/", "", false, true)
+}
+
+func mapToStruct(m map[string]any, out any) error {
+	if m == nil {
+		return errors.New("nil map")
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, out)
 }

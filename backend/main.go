@@ -62,6 +62,15 @@ func main() {
 	if dataDir == "" {
 		dataDir = "./data"
 	}
+	// Invite store + Email service (for Google OAuth invite-only + invites)
+	inviteStore, err := services.NewInviteStore(dataDir)
+	if err != nil {
+		log.Printf("⚠️  Warning: Could not initialize invite store: %v", err)
+	}
+	emailService, emailErr := services.NewEmailService()
+	if emailErr != nil {
+		log.Printf("📨 Email service disabled: %v", emailErr)
+	}
 	statsHistoryService := services.NewStatsHistoryService(dataDir)
 
 	// Initialize Server Store and Manager for multi-server support
@@ -115,7 +124,8 @@ func main() {
 	networkHandler := handlers.NewNetworkHandler(serverManager)
 	volumeHandler := handlers.NewVolumeHandler(serverManager)
 	systemHandler := handlers.NewSystemHandler(serverManager, statsHistoryService)
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handlers.NewAuthHandler(authService, inviteStore)
+	inviteHandler := handlers.NewInviteHandler(inviteStore, emailService)
 	serverHandler := handlers.NewServerHandler(serverStore, serverManager)
 	nginxHandler := handlers.NewNginxHandler(serverManager)
 	cloudflareDNSService := services.NewCloudflareDNSService()
@@ -142,6 +152,9 @@ func main() {
 	// Auth status và login (public routes - không cần auth)
 	router.GET("/api/auth/status", authHandler.GetAuthStatus)
 	router.POST("/api/auth/login", authHandler.Login)
+	router.GET("/api/auth/google/start", authHandler.GoogleStart)
+	router.GET("/api/auth/google/callback", authHandler.GoogleCallback)
+	router.GET("/api/invites/accept", inviteHandler.AcceptInvite)
 
 	// API routes (protected)
 	api := router.Group("/api")
@@ -152,6 +165,11 @@ func main() {
 		api.GET("/auth/me", authHandler.GetMe)
 		api.POST("/auth/change-password", authHandler.ChangePassword)
 		api.POST("/auth/change-username", authHandler.ChangeUsername)
+
+		// Invites (members)
+		api.POST("/invites", inviteHandler.CreateInvite)
+		api.GET("/invites", inviteHandler.ListInvites)
+		api.POST("/invites/:email/revoke", inviteHandler.RevokeInvite)
 
 		// System
 		api.GET("/system/info", systemHandler.GetSystemInfo)

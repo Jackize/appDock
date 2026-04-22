@@ -26,6 +26,8 @@ type AuthService struct {
 // Claims cho JWT token
 type Claims struct {
 	Username string `json:"username"`
+	Email    string `json:"email,omitempty"`
+	Provider string `json:"provider,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -61,24 +63,23 @@ func (s *AuthService) Login(username, password string) (string, error) {
 		return "", ErrInvalidCredentials
 	}
 
-	// Tạo JWT token
+	return s.IssueToken(username, "")
+}
+
+// IssueToken phát hành JWT token cho một user (dùng cho cả local login và OAuth).
+func (s *AuthService) IssueToken(username, email string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour) // Token hết hạn sau 24h
 	claims := &Claims{
 		Username: username,
+		Email:    email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "appdock",
 		},
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(s.jwtSecret)
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return token.SignedString(s.jwtSecret)
 }
 
 // ValidateToken kiểm tra JWT token có hợp lệ không

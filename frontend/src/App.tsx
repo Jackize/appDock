@@ -13,7 +13,9 @@ import { DNS } from "./pages/DNS";
 import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
 import Security from "./pages/Security";
+import { AuthCallback } from "./pages/AuthCallback";
 import { Volumes } from "./pages/Volumes";
+import { Members } from "./pages/Members";
 import { authAPI } from "./services/api";
 import { useAuthStore } from "./stores/authStore";
 
@@ -106,6 +108,9 @@ function App() {
   return (
     <>
       <Routes>
+        {/* OAuth callback */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
         {/* Login route */}
         <Route
           path="/login"
@@ -128,6 +133,7 @@ function App() {
                   <Route path="/dns" element={<DNS />} />
                   <Route path="/servers" element={<Servers />} />
                   <Route path="/security" element={<Security />} />
+                  <Route path="/members" element={<Members />} />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>
               </Layout>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Container, Lock, User, Loader2, AlertCircle } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { authAPI } from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -8,6 +9,8 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const location = useLocation()
+  const inviteAccepted = new URLSearchParams(location.search).get('inviteAccepted') === '1'
 
   const { setToken } = useAuthStore()
 
@@ -57,6 +60,24 @@ export function Login() {
               <p className="text-sm text-status-stopped">{error}</p>
             </div>
           )}
+
+          {inviteAccepted && !error && (
+            <div className="mb-6 p-4 rounded-lg bg-status-running/10 border border-status-running/20">
+              <p className="text-sm text-status-running">
+                Invite đã được chấp nhận. Bạn có thể đăng nhập bằng Google.
+              </p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/api/auth/google/start'
+            }}
+            className="btn-secondary w-full flex items-center justify-center gap-2 py-3 mb-5"
+          >
+            <span className="font-medium">Đăng nhập với Google</span>
+          </button>
 
           {/* Login form */}
           <form onSubmit={handleSubmit} className="space-y-5">

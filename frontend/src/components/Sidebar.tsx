@@ -13,6 +13,7 @@ import {
   Server,
   Settings,
   Shield,
+  Users,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ const navItems = [
   { to: '/dns', icon: Cloud, label: 'DNS' },
   { to: '/servers', icon: Server, label: 'Servers' },
   { to: '/security', icon: Shield, label: 'Bảo mật' },
+  { to: '/members', icon: Users, label: 'Members' },
   { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ]
 
