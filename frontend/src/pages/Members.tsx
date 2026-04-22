@@ -3,12 +3,26 @@ import { Mail, Users, Trash2, RefreshCcw, Copy } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAppStore } from "@/stores/appStore";
 import { useCreateInvite, useInvites, useRevokeInvite } from "@/hooks/useInvites";
+import { cn } from "@/lib/utils";
 
 function formatDate(s?: string) {
   if (!s) return "—";
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString();
+}
+
+function inviteStatusClass(status: string) {
+  switch (status) {
+    case "accepted":
+      return "bg-status-running/10 border-status-running/20 text-status-running";
+    case "pending":
+      return "bg-status-paused/10 border-status-paused/20 text-status-paused";
+    case "revoked":
+      return "bg-status-stopped/10 border-status-stopped/20 text-status-stopped";
+    default:
+      return "bg-background-tertiary border-border text-text-secondary";
+  }
 }
 
 export function Members() {
@@ -130,7 +144,12 @@ export function Members() {
                   <tr key={inv.email} className="border-b border-border/60">
                     <td className="py-3 pr-3 text-text-primary">{inv.email}</td>
                     <td className="py-3 pr-3">
-                      <span className="px-2 py-1 rounded-md bg-background-tertiary border border-border">
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded-md border font-medium",
+                          inviteStatusClass(inv.status),
+                        )}
+                      >
                         {inv.status}
                       </span>
                     </td>
