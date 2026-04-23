@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware'
 
 export interface User {
   username: string
+  email?: string
+  isAdmin?: boolean
 }
 
 export interface AuthState {
@@ -14,10 +16,11 @@ export interface AuthState {
   authEnabled: boolean | null // null = chưa biết
 
   // Actions
-  setToken: (token: string, username: string) => void
+  setToken: (token: string, username: string, extra?: { email?: string; isAdmin?: boolean }) => void
   setAuthEnabled: (enabled: boolean) => void
   setLoading: (loading: boolean) => void
   setUsername: (username: string) => void
+  setUserMeta: (meta: { email?: string; isAdmin?: boolean }) => void
   logout: () => void
   initialize: () => void
 }
@@ -33,10 +36,10 @@ export const useAuthStore = create<AuthState>()(
       authEnabled: null,
 
       // Set token after login
-      setToken: (token: string, username: string) => {
+      setToken: (token: string, username: string, extra?: { email?: string; isAdmin?: boolean }) => {
         set({
           token,
-          user: { username },
+          user: { username, ...(extra ?? {}) },
           isAuthenticated: true,
           isLoading: false,
         })
@@ -61,7 +64,14 @@ export const useAuthStore = create<AuthState>()(
 
       // Set username (after changing username)
       setUsername: (username: string) => {
-        set({ user: { username } })
+        const prev = get().user
+        set({ user: { ...(prev ?? {}), username } as User })
+      },
+
+      setUserMeta: (meta: { email?: string; isAdmin?: boolean }) => {
+        const prev = get().user
+        if (!prev) return
+        set({ user: { ...prev, ...meta } })
       },
 
       // Logout

@@ -54,20 +54,29 @@ func main() {
 	dockerService.StartHealthCheck(5 * time.Second)
 	defer dockerService.Close()
 
-	// Khởi tạo Auth service
-	authService := services.NewAuthService()
-
-	// Khởi tạo Stats History service
+	// Data dir for persisted stores/config
 	dataDir := os.Getenv("APPDOCK_DATA_DIR")
 	if dataDir == "" {
 		dataDir = "./data"
 	}
+
+	// Persistent config store
+	configStore, cfgErr := services.NewConfigStore(dataDir)
+	if cfgErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize config store: %v", cfgErr)
+		configStore = nil
+	}
+
+	// Khởi tạo Auth service
+	authService := services.NewAuthServiceWithConfig(configStore)
+
+	// Khởi tạo Stats History service
 	// Invite store + Email service (for Google OAuth invite-only + invites)
 	inviteStore, err := services.NewInviteStore(dataDir)
 	if err != nil {
 		log.Printf("⚠️  Warning: Could not initialize invite store: %v", err)
 	}
-	emailService, emailErr := services.NewEmailService()
+	emailService, emailErr := services.NewEmailServiceWithConfig(configStore)
 	if emailErr != nil {
 		log.Printf("📨 Email service disabled: %v", emailErr)
 	}
@@ -123,8 +132,8 @@ func main() {
 	imageHandler := handlers.NewImageHandler(serverManager)
 	networkHandler := handlers.NewNetworkHandler(serverManager)
 	volumeHandler := handlers.NewVolumeHandler(serverManager)
-	systemHandler := handlers.NewSystemHandler(serverManager, statsHistoryService)
-	authHandler := handlers.NewAuthHandler(authService, inviteStore)
+	systemHandler := handlers.NewSystemHandler(serverManager, statsHistoryService, configStore, authService)
+	authHandler := handlers.NewAuthHandler(authService, inviteStore, configStore)
 	inviteHandler := handlers.NewInviteHandler(inviteStore, emailService)
 	serverHandler := handlers.NewServerHandler(serverStore, serverManager)
 	nginxHandler := handlers.NewNginxHandler(serverManager)
@@ -136,7 +145,22 @@ func main() {
 
 	// CORS configuration
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
+	if v := strings.TrimSpace(os.Getenv("APPDOCK_CORS_ORIGINS")); v != "" {
+		parts := strings.Split(v, ",")
+		var origins []string
+		for _, p := range parts {
+			o := strings.TrimSpace(p)
+			if o != "" {
+				origins = append(origins, o)
+			}
+		}
+		if len(origins) > 0 {
+			config.AllowOrigins = origins
+		}
+	}
+	if len(config.AllowOrigins) == 0 {
+		config.AllowOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
+	}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{
 		"Origin",
@@ -176,6 +200,11 @@ func main() {
 		api.GET("/system/stats", systemHandler.GetSystemStats)
 		api.GET("/system/stats/history", systemHandler.GetStatsHistory)
 		api.GET("/system/docker-status", systemHandler.GetDockerStatus)
+		api.GET("/system/config", systemHandler.GetConfig)
+		api.GET("/system/config/schema", systemHandler.GetConfigSchema)
+		api.PATCH("/system/config/values", systemHandler.PatchConfigValues)
+		api.POST("/system/config/jwt-secret/generate", systemHandler.GenerateJWTSecret)
+		api.PATCH("/system/config", systemHandler.PatchConfig)
 
 		// Containers
 		containers := api.Group("/containers")

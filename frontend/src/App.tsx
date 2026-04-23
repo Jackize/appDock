@@ -72,7 +72,11 @@ function App() {
           if (token) {
             try {
               // Try to get user info to validate token
-              await authAPI.getMe();
+              const me = await authAPI.getMe();
+              useAuthStore.getState().setUserMeta({
+                email: me.email,
+                isAdmin: me.isAdmin,
+              });
             } catch {
               // Token is invalid, will redirect to login
               useAuthStore.getState().logout();

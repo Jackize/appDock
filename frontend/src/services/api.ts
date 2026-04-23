@@ -27,7 +27,17 @@ import type {
   SecurityReport,
 } from "@/types";
 
-const API_BASE = "/api";
+function normalizeApiBase(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "/api";
+  // Avoid double slashes when concatenating `${API_BASE}${endpoint}`
+  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
+}
+
+// In dev we usually rely on Vite proxy, so default is "/api".
+// If you run frontend + backend on different origins, set VITE_API_BASE_URL
+// to something like "http://localhost:8080/api".
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL ?? "/api");
 
 // Current server ID for multi-server support
 let currentServerId: string = "local";
@@ -145,7 +155,7 @@ export const authAPI = {
     }),
 
   // Get current user (requires auth)
-  getMe: () => fetchAPI<{ username: string }>("/auth/me"),
+  getMe: () => fetchAPI<{ username: string; email?: string; isAdmin?: boolean }>("/auth/me"),
 
   // Change password (requires auth)
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
@@ -212,12 +222,95 @@ export interface ChartPoint {
   memFree: number;
 }
 
+export type MaskedValue = {
+  configured: boolean;
+  masked: string;
+};
+
+export type SystemConfigResponse = {
+  user: {
+    username: string;
+    password: MaskedValue;
+  };
+  auth: {
+    disabled: boolean;
+    jwtSecret: { configured: boolean };
+  };
+  email: {
+    provider: string;
+    from: string;
+    resend: {
+      apiKey: MaskedValue;
+    };
+  };
+  oauth: {
+    google: {
+      clientId: string;
+      clientSecret: MaskedValue;
+    };
+  };
+  ai: {
+    gemini: {
+      apiKey: MaskedValue;
+      model: string;
+    };
+  };
+};
+
+export type PatchSystemConfigRequest = {
+  user?: { username?: string; password?: string };
+  auth?: { disabled?: boolean; jwtSecret?: string };
+  email?: { provider?: string; from?: string; resend?: { apiKey?: string } };
+  oauth?: { google?: { clientId?: string; clientSecret?: string } };
+  ai?: { gemini?: { apiKey?: string; model?: string } };
+};
+
+export type ConfigFieldType = "string" | "number" | "boolean" | "select" | "secret";
+
+export type ConfigField = {
+  key: string; // env var key
+  label: string;
+  type: ConfigFieldType;
+  value?: string | number | boolean;
+  configured: boolean;
+  options?: string[];
+  placeholder?: string;
+  help?: string;
+};
+
+export type ConfigTab = {
+  id: string;
+  title: string;
+  description?: string;
+  fields: ConfigField[];
+};
+
+export type ConfigSchemaResponse = {
+  tabs: ConfigTab[];
+};
+
 export const systemAPI = {
   getInfo: () => fetchAPI<SystemInfoResponse>("/system/info"),
   getStats: () => fetchAPI<SystemStats>("/system/stats"),
   getStatsHistory: () => fetchAPI<ChartPoint[]>("/system/stats/history"),
   getDockerStatus: () =>
     fetchAPI<DockerStatusResponse>("/system/docker-status"),
+  getConfig: () => fetchAPI<SystemConfigResponse>("/system/config"),
+  patchConfig: (body: PatchSystemConfigRequest) =>
+    fetchAPI<SystemConfigResponse>("/system/config", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  getConfigSchema: () => fetchAPI<ConfigSchemaResponse>("/system/config/schema"),
+  patchConfigValues: (values: Record<string, string | number | boolean>) =>
+    fetchAPI<ConfigSchemaResponse>("/system/config/values", {
+      method: "PATCH",
+      body: JSON.stringify({ values }),
+    }),
+  generateJWTSecret: () =>
+    fetchAPI<{ configured: boolean }>("/system/config/jwt-secret/generate", {
+      method: "POST",
+    }),
 };
 
 // ==================== CONTAINERS ====================

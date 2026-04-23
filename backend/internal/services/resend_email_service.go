@@ -29,6 +29,29 @@ func NewResendEmailService() (*ResendEmailService, error) {
 	}, nil
 }
 
+func NewResendEmailServiceWithConfig(store *ConfigStore) (*ResendEmailService, error) {
+	cfg := AppConfig{}
+	if store != nil {
+		cfg = store.Get()
+	}
+	apiKey := strings.TrimSpace(cfg.ResendAPIKey)
+	from := strings.TrimSpace(cfg.EmailFrom)
+	if apiKey == "" {
+		apiKey = strings.TrimSpace(os.Getenv("RESEND_API_KEY"))
+	}
+	if from == "" {
+		from = strings.TrimSpace(os.Getenv("APPDOCK_EMAIL_FROM"))
+	}
+	if apiKey == "" || from == "" {
+		return nil, ErrEmailNotConfigured
+	}
+	return &ResendEmailService{
+		apiKey: apiKey,
+		from:   from,
+		client: &http.Client{Timeout: 15 * time.Second},
+	}, nil
+}
+
 func (s *ResendEmailService) SendInvite(toEmail, inviteLink string) error {
 	toEmail = strings.TrimSpace(toEmail)
 	if toEmail == "" {

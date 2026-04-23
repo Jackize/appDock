@@ -50,7 +50,7 @@ func (h *InviteHandler) CreateInvite(c *gin.Context) {
 		return
 	}
 
-	baseURL := publicBaseURL(c)
+	baseURL := publicBaseURL(c, services.AppConfig{})
 	inviteLink := baseURL + "/api/invites/accept?token=" + url.QueryEscape(rawToken)
 
 	emailErr := error(nil)
@@ -131,7 +131,6 @@ func (h *InviteHandler) AcceptInvite(c *gin.Context) {
 		return
 	}
 
-	baseURL := publicBaseURL(c)
+	baseURL := publicBaseURL(c, services.AppConfig{})
 	c.Redirect(http.StatusFound, baseURL+"/#/login?inviteAccepted=1")
 }
-

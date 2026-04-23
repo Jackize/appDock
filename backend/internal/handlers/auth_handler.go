@@ -23,13 +23,15 @@ import (
 type AuthHandler struct {
 	authService *services.AuthService
 	inviteStore *services.InviteStore
+	configStore *services.ConfigStore
 }
 
 // NewAuthHandler tạo AuthHandler mới
-func NewAuthHandler(authService *services.AuthService, inviteStore *services.InviteStore) *AuthHandler {
+func NewAuthHandler(authService *services.AuthService, inviteStore *services.InviteStore, configStore *services.ConfigStore) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		inviteStore: inviteStore,
+		configStore: configStore,
 	}
 }
 
@@ -119,8 +121,19 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 		return
 	}
 
+	var email string
+	var isAdmin bool
+	if v, ok := c.Get("claims"); ok {
+		if claims, ok := v.(*services.Claims); ok && claims != nil {
+			email = claims.Email
+			isAdmin = h.authService.IsAdminClaims(claims)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"username": username,
+		"email":    email,
+		"isAdmin":  isAdmin,
 	})
 }
 
@@ -222,14 +235,24 @@ func extractToken(c *gin.Context) string {
 }
 
 func (h *AuthHandler) GoogleStart(c *gin.Context) {
-	clientID := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
-	clientSecret := os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	cfg := services.AppConfig{}
+	if h.configStore != nil {
+		cfg = h.configStore.Get()
+	}
+	clientID := strings.TrimSpace(cfg.GoogleClientID)
+	clientSecret := cfg.GoogleClientSecret
+	if clientID == "" {
+		clientID = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
+	}
+	if strings.TrimSpace(clientSecret) == "" {
+		clientSecret = os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	}
 	if clientID == "" || clientSecret == "" {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Google OAuth chưa được cấu hình"})
 		return
 	}
 
-	baseURL := publicBaseURL(c)
+	baseURL := publicBaseURL(c, cfg)
 	redirectURL := baseURL + "/api/auth/google/callback"
 
 	conf := &oauth2.Config{
@@ -268,8 +291,18 @@ func (h *AuthHandler) GoogleStart(c *gin.Context) {
 }
 
 func (h *AuthHandler) GoogleCallback(c *gin.Context) {
-	clientID := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
-	clientSecret := os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	cfg := services.AppConfig{}
+	if h.configStore != nil {
+		cfg = h.configStore.Get()
+	}
+	clientID := strings.TrimSpace(cfg.GoogleClientID)
+	clientSecret := cfg.GoogleClientSecret
+	if clientID == "" {
+		clientID = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
+	}
+	if strings.TrimSpace(clientSecret) == "" {
+		clientSecret = os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	}
 	if clientID == "" || clientSecret == "" {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Google OAuth chưa được cấu hình"})
 		return
@@ -296,7 +329,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 
-	baseURL := publicBaseURL(c)
+	baseURL := publicBaseURL(c, cfg)
 	redirectURL := baseURL + "/api/auth/google/callback"
 
 	conf := &oauth2.Config{
@@ -355,7 +388,10 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 	c.Redirect(http.StatusFound, frontendURL)
 }
 
-func publicBaseURL(c *gin.Context) string {
+func publicBaseURL(c *gin.Context, cfg services.AppConfig) string {
+	if v := strings.TrimRight(strings.TrimSpace(cfg.PublicURL), "/"); v != "" {
+		return v
+	}
 	if v := strings.TrimRight(os.Getenv("APPDOCK_PUBLIC_URL"), "/"); v != "" {
 		return v
 	}
