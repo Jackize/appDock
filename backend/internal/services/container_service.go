@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 )
 
@@ -194,6 +195,25 @@ func (d *DockerService) GetContainer(id string) (result *ContainerDetail, err er
 		},
 		Mounts: mounts,
 	}, nil
+}
+
+// InspectContainer returns the raw Docker "inspect" payload for a container.
+func (d *DockerService) InspectContainer(id string) (result *types.ContainerJSON, err error) {
+	if !d.IsConnected() {
+		return nil, ErrDockerNotConnected
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			d.markDisconnected()
+			result = nil
+			err = ErrDockerNotConnected
+		}
+	}()
+	ctr, err := d.client.ContainerInspect(d.ctx, id)
+	if err != nil {
+		return nil, d.handleError(err)
+	}
+	return &ctr, nil
 }
 
 func (d *DockerService) StartContainer(id string) (err error) {

@@ -92,6 +92,7 @@ func main() {
 				// Images
 				docker.GET("/images", dockerHandler.ListImages)
 				docker.GET("/images/:id", dockerHandler.GetImage)
+				docker.POST("/images/pull", dockerHandler.PullImage)
 				docker.DELETE("/images/:id", dockerHandler.RemoveImage)
 
 				// Networks

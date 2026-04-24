@@ -1,8 +1,11 @@
 package services
 
 import (
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 )
 
@@ -45,6 +48,40 @@ func (d *DockerService) ListNetworks() (result []NetworkInfo, err error) {
 		return nil, d.handleError(err)
 	}
 
+	// NetworkList typically doesn't include attached containers. Build membership from
+	// the running container list so the UI can show correct counts/names.
+	containersByNetwork := make(map[string]map[string]string)
+	cts, err := d.client.ContainerList(d.ctx, container.ListOptions{All: false})
+	if err != nil {
+		return nil, d.handleError(err)
+	}
+	for _, c := range cts {
+		name := ""
+		if len(c.Names) > 0 {
+			// Docker returns names like "/my-container"
+			if len(c.Names[0]) > 0 && c.Names[0][0] == '/' {
+				name = c.Names[0][1:]
+			} else {
+				name = c.Names[0]
+			}
+		}
+
+		shortID := c.ID
+		if len(shortID) > 12 {
+			shortID = shortID[:12]
+		}
+
+		if c.NetworkSettings == nil || c.NetworkSettings.Networks == nil {
+			continue
+		}
+		for netName := range c.NetworkSettings.Networks {
+			if _, ok := containersByNetwork[netName]; !ok {
+				containersByNetwork[netName] = make(map[string]string)
+			}
+			containersByNetwork[netName][shortID] = name
+		}
+	}
+
 	result = make([]NetworkInfo, 0, len(networks))
 	for _, net := range networks {
 		id := net.ID
@@ -52,9 +89,9 @@ func (d *DockerService) ListNetworks() (result []NetworkInfo, err error) {
 			id = id[:12]
 		}
 
-		containers := make(map[string]string)
-		for cID, endpoint := range net.Containers {
-			containers[cID[:12]] = endpoint.Name
+		containers := containersByNetwork[net.Name]
+		if containers == nil {
+			containers = make(map[string]string)
 		}
 
 		ipamConfigs := make([]IPAMConfig, 0, len(net.IPAM.Config))
@@ -81,6 +118,15 @@ func (d *DockerService) ListNetworks() (result []NetworkInfo, err error) {
 			Created:    net.Created,
 		})
 	}
+
+	sort.SliceStable(result, func(i, j int) bool {
+		ai := strings.ToLower(result[i].Name)
+		aj := strings.ToLower(result[j].Name)
+		if ai == aj {
+			return result[i].ID < result[j].ID
+		}
+		return ai < aj
+	})
 
 	return result, nil
 }

@@ -73,6 +73,33 @@ func main() {
 	}
 	statsHistoryService := services.NewStatsHistoryService(dataDir)
 
+	projectStore, projectStoreErr := services.NewProjectStore(dataDir)
+	if projectStoreErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize project store: %v", projectStoreErr)
+	}
+
+	traefikStore, traefikStoreErr := services.NewTraefikStore(dataDir)
+	if traefikStoreErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize traefik store: %v", traefikStoreErr)
+	}
+	traefikService, traefikServiceErr := services.NewTraefikService(dataDir)
+	if traefikServiceErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize traefik service: %v", traefikServiceErr)
+	}
+
+	registryStore, registryStoreErr := services.NewRegistryProjectStore(dataDir)
+	if registryStoreErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize registry project store: %v", registryStoreErr)
+	}
+	composeStackStore, composeStackStoreErr := services.NewComposeStackStore(dataDir)
+	if composeStackStoreErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize compose stack store: %v", composeStackStoreErr)
+	}
+	composeService, composeServiceErr := services.NewComposeService(dataDir)
+	if composeServiceErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize compose service: %v", composeServiceErr)
+	}
+
 	// Initialize Server Store and Manager for multi-server support
 	serverStore, err := services.NewServerStore(dataDir)
 	if err != nil {
@@ -120,7 +147,7 @@ func main() {
 
 	// Khởi tạo handlers
 	containerHandler := handlers.NewContainerHandler(serverManager)
-	imageHandler := handlers.NewImageHandler(serverManager)
+	imageHandler := handlers.NewImageHandler(serverManager, registryStore)
 	networkHandler := handlers.NewNetworkHandler(serverManager)
 	volumeHandler := handlers.NewVolumeHandler(serverManager)
 	systemHandler := handlers.NewSystemHandler(serverManager, statsHistoryService)
@@ -130,6 +157,26 @@ func main() {
 	nginxHandler := handlers.NewNginxHandler(serverManager)
 	cloudflareDNSService := services.NewCloudflareDNSService()
 	dnsHandler := handlers.NewDNSHandler(cloudflareDNSService)
+
+	var projectHandler *handlers.ProjectHandler
+	if projectStore != nil {
+		projectHandler = handlers.NewProjectHandler(projectStore, serverStore, registryStore)
+	}
+
+	var registryProjectHandler *handlers.RegistryProjectHandler
+	if registryStore != nil {
+		registryProjectHandler = handlers.NewRegistryProjectHandler(registryStore)
+	}
+
+	var composeStackHandler *handlers.ComposeStackHandler
+	if composeStackStore != nil && composeService != nil && projectStore != nil {
+		composeStackHandler = handlers.NewComposeStackHandler(composeStackStore, projectStore, composeService, serverManager)
+	}
+
+	var traefikHandler *handlers.TraefikHandler
+	if traefikStore != nil && traefikService != nil {
+		traefikHandler = handlers.NewTraefikHandler(traefikStore, traefikService)
+	}
 
 	// Khởi tạo Gin router
 	router := gin.Default()
@@ -182,6 +229,7 @@ func main() {
 		{
 			containers.GET("", containerHandler.ListContainers)
 			containers.GET("/:id", containerHandler.GetContainer)
+			containers.GET("/:id/inspect", containerHandler.InspectContainer)
 			containers.POST("/:id/start", containerHandler.StartContainer)
 			containers.POST("/:id/stop", containerHandler.StopContainer)
 			containers.POST("/:id/restart", containerHandler.RestartContainer)
@@ -227,6 +275,50 @@ func main() {
 			servers.PUT("/:id", serverHandler.UpdateServer)
 			servers.DELETE("/:id", serverHandler.DeleteServer)
 			servers.GET("/:id/test", serverHandler.TestConnection)
+		}
+
+		if projectHandler != nil {
+			projects := api.Group("/projects")
+			{
+				projects.GET("", projectHandler.ListProjects)
+				projects.GET("/:id", projectHandler.GetProject)
+				projects.POST("", projectHandler.CreateProject)
+				projects.PUT("/:id", projectHandler.UpdateProject)
+				projects.DELETE("/:id", projectHandler.DeleteProject)
+			}
+		}
+
+		if registryProjectHandler != nil {
+			rp := api.Group("/registry-projects")
+			{
+				rp.GET("", registryProjectHandler.List)
+				rp.GET("/:id", registryProjectHandler.Get)
+				rp.POST("", registryProjectHandler.Create)
+				rp.PUT("/:id", registryProjectHandler.Update)
+				rp.DELETE("/:id", registryProjectHandler.Delete)
+			}
+		}
+
+		if composeStackHandler != nil {
+			cs := api.Group("/compose-stacks")
+			{
+				cs.GET("", composeStackHandler.List)
+				cs.POST("", composeStackHandler.Create)
+				cs.GET("/:id", composeStackHandler.Get)
+				cs.PUT("/:id", composeStackHandler.Update)
+				cs.DELETE("/:id", composeStackHandler.Delete)
+				cs.POST("/:id/deploy", composeStackHandler.Deploy)
+				cs.POST("/:id/undeploy", composeStackHandler.Undeploy)
+			}
+		}
+
+		if traefikHandler != nil {
+			tr := api.Group("/traefik")
+			{
+				tr.GET("/status", traefikHandler.GetStatus)
+				tr.POST("/apply", traefikHandler.Apply)
+				tr.GET("/logs", traefikHandler.Logs)
+			}
 		}
 
 		// Nginx management

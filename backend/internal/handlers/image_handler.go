@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"appdock/internal/services"
 
@@ -10,10 +12,11 @@ import (
 
 type ImageHandler struct {
 	serverManager *services.ServerManager
+	registryStore *services.RegistryProjectStore
 }
 
-func NewImageHandler(sm *services.ServerManager) *ImageHandler {
-	return &ImageHandler{serverManager: sm}
+func NewImageHandler(sm *services.ServerManager, reg *services.RegistryProjectStore) *ImageHandler {
+	return &ImageHandler{serverManager: sm, registryStore: reg}
 }
 
 // ListImages trả về danh sách tất cả images
@@ -51,27 +54,62 @@ func (h *ImageHandler) RemoveImage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Image đã được xóa"})
 }
 
-// PullImage pull một image từ registry (only local server)
+// PullImage pulls an image (plain reference or via registry project credentials).
 func (h *ImageHandler) PullImage(c *gin.Context) {
 	serverID := GetServerIDFromRequest(c)
-	if !h.serverManager.IsLocal(serverID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Pull image only supported for local server"})
-		return
-	}
 
 	var req struct {
-		Image string `json:"image" binding:"required"`
+		Image               string `json:"image"`
+		RegistryProjectID   string `json:"registryProjectId"`
+		Repository          string `json:"repository"`
+		Tag                 string `json:"tag"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng cung cấp tên image"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.serverManager.GetLocalDocker().PullImage(req.Image); err != nil {
+	var ref string
+	var auth string
+
+	if strings.TrimSpace(req.RegistryProjectID) != "" {
+		if h.registryStore == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "registry projects are not available"})
+			return
+		}
+		rp, err := h.registryStore.Get(req.RegistryProjectID)
+		if err != nil {
+			if errors.Is(err, services.ErrRegistryProjectNotFound) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "registry project not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		repo := strings.TrimSpace(req.Repository)
+		if repo == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "repository is required when using registryProjectId"})
+			return
+		}
+		tag := strings.TrimSpace(req.Tag)
+		if tag == "" {
+			tag = "latest"
+		}
+		ref = rp.ImageRef(repo, tag)
+		auth = services.EncodeRegistryAuth(rp.Username, rp.Password)
+	} else {
+		if strings.TrimSpace(req.Image) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng cung cấp image hoặc registryProjectId + repository"})
+			return
+		}
+		ref = strings.TrimSpace(req.Image)
+	}
+
+	if err := h.serverManager.PullImage(serverID, ref, auth); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Image đã được tải về"})
+	c.JSON(http.StatusOK, gin.H{"message": "Image đã được tải về", "ref": ref})
 }
 
 // RemoveImages xóa nhiều images cùng lúc (only local server)

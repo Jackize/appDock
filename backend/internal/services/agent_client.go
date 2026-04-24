@@ -227,6 +227,15 @@ func (c *AgentClient) RemoveImage(id string, force bool) error {
 	return err
 }
 
+func (c *AgentClient) PullImage(ref, registryAuth string) error {
+	body := map[string]string{"image": ref}
+	if registryAuth != "" {
+		body["registryAuth"] = registryAuth
+	}
+	_, err := c.doRequestWithTimeout("POST", "/api/docker/images/pull", body, 45*time.Minute)
+	return err
+}
+
 // Networks
 
 func (c *AgentClient) ListNetworks() (json.RawMessage, error) {

@@ -186,6 +186,131 @@ export interface TestConnectionResponse {
   error?: string;
 }
 
+/** Logical grouping of deployments on a Docker host (Compose stack names, etc.). */
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  serverId: string;
+  registryProjectId?: string;
+  composeProjectNames: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  serverId?: string;
+  registryProjectId?: string;
+  composeProjectNames?: string[];
+}
+
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string;
+  serverId?: string;
+  registryProjectId?: string | null;
+  composeProjectNames?: string[];
+}
+
+/** Harbor-style registry namespace + credentials (stored on server; protect data dir). */
+export interface RegistryProject {
+  id: string;
+  name: string;
+  description: string;
+  host: string;
+  namespace: string;
+  username?: string;
+  hasPassword: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRegistryProjectRequest {
+  name: string;
+  description?: string;
+  host: string;
+  namespace?: string;
+  username?: string;
+  password?: string;
+}
+
+export interface UpdateRegistryProjectRequest {
+  name?: string;
+  description?: string;
+  host?: string;
+  namespace?: string;
+  username?: string;
+  password?: string;
+}
+
+export interface ComposeStack {
+  id: string;
+  projectId: string;
+  serverId: string;
+  name: string;
+  composeProjectName: string;
+  composeYaml: string;
+  envContent?: string;
+  lastDeployAt?: string;
+  lastDeployMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateComposeStackRequest {
+  projectId: string;
+  serverId?: string;
+  name: string;
+  composeProjectName: string;
+  composeYaml: string;
+  envContent?: string;
+}
+
+export interface UpdateComposeStackRequest {
+  name?: string;
+  composeProjectName?: string;
+  composeYaml?: string;
+  envContent?: string;
+  serverId?: string;
+}
+
+export type PullImageRequest =
+  | { image: string }
+  | {
+      registryProjectId: string;
+      repository: string;
+      tag?: string;
+    };
+
+export interface TraefikConfig {
+  enabled: boolean;
+  domain: string;
+  cloudflareToken: string;
+  acmeEmail: string;
+  dashboardHost: string;
+  createdAt: string;
+  updatedAt: string;
+  lastApplyOutput?: string;
+  lastApplyError?: string;
+  lastAppliedAt?: string;
+}
+
+export interface TraefikStatusResponse {
+  config: TraefikConfig;
+  running: boolean;
+  status: string;
+}
+
+export interface UpdateTraefikConfigRequest {
+  enabled?: boolean;
+  domain?: string;
+  cloudflareToken?: string;
+  acmeEmail?: string;
+  dashboardHost?: string;
+}
+
 // Nginx types
 export type SSLStatus = 'none' | 'active' | 'expired' | 'pending';
 

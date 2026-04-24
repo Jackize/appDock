@@ -14,6 +14,8 @@ import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
 import Security from "./pages/Security";
 import { AuthCallback } from "./pages/AuthCallback";
+import { Projects } from "./pages/Projects";
+import { RegistryProjects } from "./pages/RegistryProjects";
 import { Volumes } from "./pages/Volumes";
 import { Members } from "./pages/Members";
 import { authAPI } from "./services/api";
@@ -126,6 +128,8 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/containers" element={<Containers />} />
+                  <Route path="/projects" element={<Projects />} />
+                  <Route path="/registry-projects" element={<RegistryProjects />} />
                   <Route path="/images" element={<Images />} />
                   <Route path="/networks" element={<Networks />} />
                   <Route path="/volumes" element={<Volumes />} />

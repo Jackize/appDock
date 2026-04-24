@@ -1,13 +1,48 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Settings as SettingsIcon, User, Lock, Save, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { authAPI } from "@/services/api";
 import { useAuthStore } from "@/stores/authStore";
 import { useAppStore } from "@/stores/appStore";
+import { useApplyTraefik, useTraefikLogs, useTraefikStatus } from "@/hooks/useDocker";
 
 export function Settings() {
   const { user, setUsername } = useAuthStore();
   const addToast = useAppStore((state) => state.addToast);
+  const { data: traefikStatus } = useTraefikStatus();
+  const applyTraefik = useApplyTraefik();
+  const { data: traefikLogs } = useTraefikLogs("200");
+  const [traefikApplyOutput, setTraefikApplyOutput] = useState<string>("");
+  const [traefikApplyError, setTraefikApplyError] = useState<string>("");
+
+  const [traefikForm, setTraefikForm] = useState({
+    enabled: false,
+    domain: "",
+    acmeEmail: "",
+    cloudflareToken: "",
+    dashboardHost: "",
+  });
+
+  const [traefikHydrated, setTraefikHydrated] = useState(false);
+  useEffect(() => {
+    if (!traefikStatus || traefikHydrated) return;
+    const cfg = traefikStatus.config;
+    setTraefikForm({
+      enabled: cfg.enabled,
+      domain: cfg.domain || "",
+      acmeEmail: cfg.acmeEmail || "",
+      cloudflareToken: cfg.cloudflareToken || "",
+      dashboardHost: cfg.dashboardHost || "",
+    });
+    setTraefikHydrated(true);
+  }, [traefikStatus, traefikHydrated]);
+
+  useEffect(() => {
+    if (!traefikStatus) return;
+    const cfg = traefikStatus.config;
+    if (cfg.lastApplyOutput) setTraefikApplyOutput(cfg.lastApplyOutput);
+    if (cfg.lastApplyError) setTraefikApplyError(cfg.lastApplyError);
+  }, [traefikStatus]);
 
   // Change username form
   const [usernameForm, setUsernameForm] = useState({
@@ -310,6 +345,128 @@ export function Settings() {
               github.com/appdock
             </a>
           </div>
+        </div>
+      </div>
+
+      {/* Traefik (local) */}
+      <div className="bg-background-secondary border border-border rounded-xl p-6 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">Traefik (local)</h2>
+            <p className="text-sm text-text-secondary mt-1">
+              Bật Traefik để tự động cấp wildcard TLS (Cloudflare DNS-01) và route subdomain cho apps deploy trên local Docker.
+            </p>
+            <p className="text-xs text-text-muted mt-2">
+              Trạng thái: {traefikStatus?.running ? "Running" : "Stopped"} {traefikStatus?.status ? `(${traefikStatus.status})` : ""}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+            <input
+              type="checkbox"
+              checked={traefikForm.enabled}
+              onChange={(e) => setTraefikForm((p) => ({ ...p, enabled: e.target.checked }))}
+            />
+            Enabled
+          </label>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">Domain</label>
+            <input
+              className="input w-full"
+              placeholder="example.com"
+              value={traefikForm.domain}
+              onChange={(e) => setTraefikForm((p) => ({ ...p, domain: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">ACME Email</label>
+            <input
+              className="input w-full"
+              placeholder="you@example.com"
+              value={traefikForm.acmeEmail}
+              onChange={(e) => setTraefikForm((p) => ({ ...p, acmeEmail: e.target.value }))}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">Cloudflare API Token (DNS Edit)</label>
+            <input
+              className="input w-full font-mono text-xs"
+              placeholder="CF_DNS_API_TOKEN"
+              value={traefikForm.cloudflareToken}
+              onChange={(e) => setTraefikForm((p) => ({ ...p, cloudflareToken: e.target.value }))}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">Dashboard host (optional)</label>
+            <input
+              className="input w-full"
+              placeholder={`traefik.${traefikForm.domain || "example.com"}`}
+              value={traefikForm.dashboardHost}
+              onChange={(e) => setTraefikForm((p) => ({ ...p, dashboardHost: e.target.value }))}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            onClick={async () => {
+              try {
+                setTraefikApplyOutput("");
+                setTraefikApplyError("");
+                const res = await applyTraefik.mutateAsync({
+                  enabled: traefikForm.enabled,
+                  domain: traefikForm.domain,
+                  acmeEmail: traefikForm.acmeEmail,
+                  cloudflareToken: traefikForm.cloudflareToken,
+                  dashboardHost: traefikForm.dashboardHost,
+                });
+                // show backend output directly in UI
+                setTraefikApplyOutput((res as { output?: string }).output || "");
+              } catch (e) {
+                setTraefikApplyError(e instanceof Error ? e.message : "Không thể áp dụng cấu hình");
+                addToast({
+                  title: "Traefik lỗi",
+                  description: e instanceof Error ? e.message : "Không thể áp dụng cấu hình",
+                  variant: "error",
+                });
+              }
+            }}
+            loading={applyTraefik.isPending}
+          >
+            <Save className="w-4 h-4" />
+            Apply / Reload
+          </Button>
+        </div>
+
+        <div className="border border-border rounded-lg bg-background p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-text-primary">Apply output</p>
+            <p className="text-xs text-text-muted">
+              {traefikStatus?.config?.lastAppliedAt
+                ? new Date(traefikStatus.config.lastAppliedAt).toLocaleString()
+                : ""}
+            </p>
+          </div>
+          {traefikApplyError ? (
+            <p className="text-xs text-status-stopped whitespace-pre-wrap mb-2">
+              {traefikApplyError}
+            </p>
+          ) : null}
+          <pre className="text-xs text-text-secondary whitespace-pre-wrap max-h-64 overflow-y-auto">
+            {traefikApplyOutput || "(no output)"}
+          </pre>
+        </div>
+
+        <div className="border border-border rounded-lg bg-background p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-text-primary">Logs</p>
+            <p className="text-xs text-text-muted">tail 200</p>
+          </div>
+          <pre className="text-xs text-text-secondary whitespace-pre-wrap max-h-64 overflow-y-auto">
+            {traefikLogs?.logs || "(no logs)"}
+          </pre>
         </div>
       </div>
     </div>

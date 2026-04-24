@@ -14,12 +14,16 @@ import {
   Settings,
   Shield,
   Users,
+  FolderKanban,
+  Package,
 } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tổng quan' },
+  { to: '/projects', icon: FolderKanban, label: 'Projects' },
+  { to: '/registry-projects', icon: Package, label: 'Registry' },
   { to: '/containers', icon: Container, label: 'Containers' },
   { to: '/images', icon: Image, label: 'Images' },
   { to: '/networks', icon: Network, label: 'Networks' },
