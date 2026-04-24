@@ -157,6 +157,10 @@ func (d *DockerService) RemoveImage(id string, force bool) (err error) {
 }
 
 func (d *DockerService) PullImage(refStr string) (err error) {
+	return d.PullImageWithAuth(refStr, "")
+}
+
+func (d *DockerService) PullImageWithAuth(refStr, registryAuth string) (err error) {
 	if !d.IsConnected() {
 		return ErrDockerNotConnected
 	}
@@ -166,13 +170,16 @@ func (d *DockerService) PullImage(refStr string) (err error) {
 			err = ErrDockerNotConnected
 		}
 	}()
-	reader, err := d.client.ImagePull(d.ctx, refStr, image.PullOptions{})
+	opts := image.PullOptions{}
+	if registryAuth != "" {
+		opts.RegistryAuth = registryAuth
+	}
+	reader, err := d.client.ImagePull(d.ctx, refStr, opts)
 	if err != nil {
 		return d.handleError(err)
 	}
 	defer reader.Close()
 
-	// Đọc hết response để hoàn thành pull
 	_, err = io.Copy(io.Discard, reader)
 	return d.handleError(err)
 }

@@ -310,6 +310,28 @@ func (m *ServerManager) GetContainer(serverID, containerID string) (interface{},
 	return result, nil
 }
 
+// InspectContainer returns the raw Docker inspect payload for a container.
+func (m *ServerManager) InspectContainer(serverID, containerID string) (interface{}, error) {
+	if m.IsLocal(serverID) {
+		return m.localDocker.InspectContainer(containerID)
+	}
+
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return nil, ErrServerNotFound
+	}
+
+	// Agent already returns raw Docker inspect at GET /api/docker/containers/:id
+	data, err := client.GetContainer(containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	var result interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
 func (m *ServerManager) StartContainer(serverID, containerID string) error {
 	if m.IsLocal(serverID) {
 		return m.localDocker.StartContainer(containerID)
@@ -457,6 +479,18 @@ func (m *ServerManager) RemoveImage(serverID, imageID string, force bool) error 
 	}
 
 	return client.RemoveImage(imageID, force)
+}
+
+// PullImage pulls an image reference on the given server (local Docker or agent).
+func (m *ServerManager) PullImage(serverID, ref, registryAuth string) error {
+	if m.IsLocal(serverID) {
+		return m.localDocker.PullImageWithAuth(ref, registryAuth)
+	}
+	client := m.getAgentClient(serverID)
+	if client == nil {
+		return ErrServerNotFound
+	}
+	return client.PullImage(ref, registryAuth)
 }
 
 // ==================== Networks ====================

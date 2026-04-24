@@ -46,6 +46,18 @@ func (h *ContainerHandler) GetContainer(c *gin.Context) {
 	c.JSON(http.StatusOK, container)
 }
 
+// InspectContainer trả về raw docker inspect payload của container
+func (h *ContainerHandler) InspectContainer(c *gin.Context) {
+	serverID := GetServerIDFromRequest(c)
+	id := c.Param("id")
+	ctr, err := h.serverManager.InspectContainer(serverID, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, ctr)
+}
+
 // StartContainer khởi động một container
 func (h *ContainerHandler) StartContainer(c *gin.Context) {
 	serverID := GetServerIDFromRequest(c)

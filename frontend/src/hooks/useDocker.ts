@@ -1,15 +1,30 @@
 import {
+  composeStacksAPI,
   containersAPI,
   imagesAPI,
   networksAPI,
+  projectsAPI,
+  registryProjectsAPI,
   serversAPI,
   systemAPI,
+  traefikAPI,
   volumesAPI,
 } from "@/services/api";
 import { useAppStore } from "@/stores/appStore";
 import { useServerStore } from "@/stores/serverStore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateServerRequest, UpdateServerRequest } from "@/types";
+import type {
+  CreateComposeStackRequest,
+  CreateProjectRequest,
+  CreateRegistryProjectRequest,
+  CreateServerRequest,
+  PullImageRequest,
+  UpdateTraefikConfigRequest,
+  UpdateComposeStackRequest,
+  UpdateProjectRequest,
+  UpdateRegistryProjectRequest,
+  UpdateServerRequest,
+} from "@/types";
 
 // ==================== SYSTEM HOOKS ====================
 
@@ -60,6 +75,14 @@ export function useContainer(id: string) {
     queryKey: ["containers", id],
     queryFn: () => containersAPI.get(id),
     enabled: !!id,
+  });
+}
+
+export function useContainerInspect(id: string, enabled = true) {
+  return useQuery({
+    queryKey: ["containers", id, "inspect"],
+    queryFn: () => containersAPI.inspect(id),
+    enabled: !!id && enabled,
   });
 }
 
@@ -229,12 +252,13 @@ export function usePullImage() {
   const addToast = useAppStore((state) => state.addToast);
 
   return useMutation({
-    mutationFn: imagesAPI.pull,
-    onSuccess: (_, image) => {
+    mutationFn: (input: string | PullImageRequest) =>
+      imagesAPI.pull(typeof input === "string" ? { image: input } : input),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["images"] });
       addToast({
         title: "Thành công",
-        description: `Image ${image} đã được tải về`,
+        description: `Image ${data.ref ?? "đã"} được tải về`,
         variant: "success",
       });
     },
@@ -422,7 +446,364 @@ export function useRemoveVolume() {
   });
 }
 
+// ==================== PROJECT HOOKS ====================
+
+export function useProjects() {
+  return useQuery({
+    queryKey: ["projects"],
+    queryFn: projectsAPI.list,
+    refetchInterval: 30000,
+  });
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+
+  return useMutation({
+    mutationFn: (data: CreateProjectRequest) => projectsAPI.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      addToast({
+        title: "Thành công",
+        description: "Đã tạo project",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateProjectRequest }) =>
+      projectsAPI.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      addToast({
+        title: "Thành công",
+        description: "Đã cập nhật project",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useRemoveProject() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+
+  return useMutation({
+    mutationFn: projectsAPI.remove,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      addToast({
+        title: "Thành công",
+        description: "Đã xóa project",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+// ==================== REGISTRY PROJECT HOOKS ====================
+
+export function useRegistryProjects() {
+  return useQuery({
+    queryKey: ["registry-projects"],
+    queryFn: registryProjectsAPI.list,
+    refetchInterval: 30000,
+  });
+}
+
+export function useCreateRegistryProject() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: (data: CreateRegistryProjectRequest) =>
+      registryProjectsAPI.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registry-projects"] });
+      addToast({
+        title: "Thành công",
+        description: "Đã tạo registry project",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useUpdateRegistryProject() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateRegistryProjectRequest;
+    }) => registryProjectsAPI.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registry-projects"] });
+      addToast({
+        title: "Thành công",
+        description: "Đã cập nhật registry project",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useRemoveRegistryProject() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: registryProjectsAPI.remove,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registry-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      addToast({
+        title: "Thành công",
+        description: "Đã xóa registry project",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+// ==================== COMPOSE STACK HOOKS ====================
+
+export function useComposeStacks(projectId: string) {
+  return useQuery({
+    queryKey: ["compose-stacks", projectId],
+    queryFn: () => composeStacksAPI.list(projectId),
+    enabled: !!projectId,
+    refetchInterval: 15000,
+  });
+}
+
+export function useCreateComposeStack() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: (data: CreateComposeStackRequest) =>
+      composeStacksAPI.create(data),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["compose-stacks", vars.projectId],
+      });
+      addToast({
+        title: "Thành công",
+        description: "Đã tạo compose stack",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useUpdateComposeStack() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: (vars: {
+      id: string;
+      projectId: string;
+      data: UpdateComposeStackRequest;
+    }) => composeStacksAPI.update(vars.id, vars.data),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["compose-stacks", vars.projectId],
+      });
+      addToast({
+        title: "Thành công",
+        description: "Đã cập nhật stack",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useRemoveComposeStack() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: (vars: { id: string; projectId: string }) =>
+      composeStacksAPI.remove(vars.id),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["compose-stacks", vars.projectId],
+      });
+      addToast({
+        title: "Thành công",
+        description: "Đã xóa stack",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useDeployComposeStack() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: (vars: { id: string; projectId: string }) =>
+      composeStacksAPI.deploy(vars.id),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["compose-stacks", vars.projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["containers"] });
+      addToast({
+        title: "Deploy",
+        description: "Compose up đã chạy (local server)",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi deploy",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useUndeployComposeStack() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: (vars: { id: string; projectId: string }) =>
+      composeStacksAPI.undeploy(vars.id),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["compose-stacks", vars.projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["containers"] });
+      addToast({
+        title: "Undeploy",
+        description: "Compose down đã chạy",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
 // ==================== SERVER HOOKS ====================
+
+// ==================== TRAEFIK HOOKS ====================
+
+export function useTraefikStatus() {
+  return useQuery({
+    queryKey: ["traefik", "status"],
+    queryFn: traefikAPI.status,
+    refetchInterval: 10000,
+  });
+}
+
+export function useApplyTraefik() {
+  const queryClient = useQueryClient();
+  const addToast = useAppStore((state) => state.addToast);
+  return useMutation({
+    mutationFn: (data: UpdateTraefikConfigRequest) => traefikAPI.apply(data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["traefik"] });
+      addToast({
+        title: "Traefik",
+        description: res.message || "Đã áp dụng cấu hình",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      addToast({
+        title: "Traefik lỗi",
+        description: error.message,
+        variant: "error",
+      });
+    },
+  });
+}
+
+export function useTraefikLogs(tail = "200") {
+  return useQuery({
+    queryKey: ["traefik", "logs", tail],
+    queryFn: () => traefikAPI.logs(tail),
+    refetchInterval: 5000,
+  });
+}
 
 export function useServers() {
   const setServers = useServerStore((state) => state.setServers);

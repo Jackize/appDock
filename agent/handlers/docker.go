@@ -329,6 +329,34 @@ func (h *DockerHandler) RemoveImage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Image removed"})
 }
 
+type pullImageRequest struct {
+	Image        string `json:"image" binding:"required"`
+	RegistryAuth string `json:"registryAuth"`
+}
+
+func (h *DockerHandler) PullImage(c *gin.Context) {
+	var req pullImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	opts := image.PullOptions{}
+	if req.RegistryAuth != "" {
+		opts.RegistryAuth = req.RegistryAuth
+	}
+	reader, err := h.client.ImagePull(h.ctx, req.Image, opts)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer reader.Close()
+	if _, err := io.Copy(io.Discard, reader); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Image pulled", "ref": req.Image})
+}
+
 // ==================== Networks ====================
 
 type NetworkInfo struct {

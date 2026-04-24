@@ -1,26 +1,66 @@
 version: "3.8"
 
 # =============================================================================
-# AppDock - Single Container Deployment
-# Chỉ cần 1 container duy nhất chứa cả Frontend và Backend
+# AppDock - Single Container Deployment + Traefik (Wildcard Cloudflare)
+# - 1 container AppDock (frontend+backend)
+# - 1 container Traefik reverse proxy (auto TLS via DNS-01 Cloudflare)
+#
+# Usage:
+#   1) create a Cloudflare API token with DNS Edit
+#   2) create `.env` from `.env.example` below
+#   3) docker network not needed; compose creates it
+#   4) docker compose up -d --build
 # =============================================================================
 
 services:
+  traefik:
+    image: traefik:v3.6
+    container_name: appdock-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      # Wildcard cert via DNS-01 (Cloudflare)
+      - "--certificatesresolvers.le.acme.email=${TRAEFIK_ACME_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.le.acme.dnschallenge=true"
+      - "--certificatesresolvers.le.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.le.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53"
+    environment:
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-letsencrypt:/letsencrypt
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DASHBOARD_HOST}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=le"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
   appdock:
     build:
       context: .
       dockerfile: Dockerfile
     image: appdock:latest
     container_name: appdock
-    # ports:
-    #   - "8080:8080"
-    expose:
-      - "8080"
+    # No public ports; Traefik routes to it via Docker network
     volumes:
       # Mount Docker socket để app có thể quản lý Docker
       # Linux/macOS: /var/run/docker.sock
       # Windows (WSL2): /var/run/docker.sock hoặc //var/run/docker.sock
       - /var/run/docker.sock:/var/run/docker.sock
+      - appdock-data:/app/data
     environment:
       - PORT=8080
       - GIN_MODE=release
@@ -28,7 +68,17 @@ services:
       - APPDOCK_PASSWORD=appdock
       - APPDOCK_JWT_SECRET=dev-secret-key-not-for-production
       - APPDOCK_AUTH_DISABLED=false
+      - APPDOCK_DATA_DIR=/app/data
     restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.appdock.rule=Host(`${APPDOCK_HOST}`)"
+      - "traefik.http.routers.appdock.entrypoints=websecure"
+      - "traefik.http.routers.appdock.tls=true"
+      - "traefik.http.routers.appdock.tls.certresolver=le"
+      - "traefik.http.services.appdock.loadbalancer.server.port=8080"
     healthcheck:
       test:
         [
@@ -43,3 +93,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+volumes:
+  traefik-letsencrypt:
+  appdock-data:
+
+networks:
+  proxy:
+    driver: bridge
+
+# -----------------------------------------------------------------------------
+# .env.example (create a `.env` next to this compose file)
+#
+# CF_DNS_API_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# TRAEFIK_ACME_EMAIL=you@example.com
+# TRAEFIK_DASHBOARD_HOST=traefik.example.com
+# APPDOCK_HOST=appdock.example.com
+# -----------------------------------------------------------------------------

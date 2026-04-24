@@ -22,6 +22,18 @@ import type {
   TestConnectionResponse,
   UpdateDomainRequest,
   UpdateServerRequest,
+  Project,
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  RegistryProject,
+  CreateRegistryProjectRequest,
+  UpdateRegistryProjectRequest,
+  ComposeStack,
+  CreateComposeStackRequest,
+  UpdateComposeStackRequest,
+  PullImageRequest,
+  TraefikStatusResponse,
+  UpdateTraefikConfigRequest,
   Volume,
   NetworkSnapshot,
   SecurityReport,
@@ -227,6 +239,8 @@ export const containersAPI = {
 
   get: (id: string) => fetchAPI<ContainerDetail>(`/containers/${id}`),
 
+  inspect: (id: string) => fetchAPI<unknown>(`/containers/${id}/inspect`),
+
   start: (id: string) =>
     fetchAPI<{ message: string }>(`/containers/${id}/start`, {
       method: "POST",
@@ -276,10 +290,10 @@ export const imagesAPI = {
       body: JSON.stringify({ ids, force }),
     }),
 
-  pull: (image: string) =>
-    fetchAPI<{ message: string }>("/images/pull", {
+  pull: (body: PullImageRequest) =>
+    fetchAPI<{ message: string; ref?: string }>("/images/pull", {
       method: "POST",
-      body: JSON.stringify({ image }),
+      body: JSON.stringify(body),
     }),
 };
 
@@ -352,6 +366,105 @@ export const serversAPI = {
 
   testConnection: (id: string) =>
     fetchAPI<TestConnectionResponse>(`/servers/${id}/test`),
+};
+
+// ==================== PROJECTS ====================
+
+export const projectsAPI = {
+  list: () => fetchAPI<Project[]>("/projects"),
+
+  get: (id: string) => fetchAPI<Project>(`/projects/${id}`),
+
+  create: (data: CreateProjectRequest) =>
+    fetchAPI<Project>("/projects", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateProjectRequest) =>
+    fetchAPI<Project>(`/projects/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchAPI<{ message: string }>(`/projects/${id}`, { method: "DELETE" }),
+};
+
+// ==================== REGISTRY PROJECTS ====================
+
+export const registryProjectsAPI = {
+  list: () => fetchAPI<RegistryProject[]>("/registry-projects"),
+
+  get: (id: string) => fetchAPI<RegistryProject>(`/registry-projects/${id}`),
+
+  create: (data: CreateRegistryProjectRequest) =>
+    fetchAPI<RegistryProject>("/registry-projects", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateRegistryProjectRequest) =>
+    fetchAPI<RegistryProject>(`/registry-projects/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchAPI<{ message: string }>(`/registry-projects/${id}`, {
+      method: "DELETE",
+    }),
+};
+
+// ==================== COMPOSE STACKS ====================
+
+export const composeStacksAPI = {
+  list: (projectId: string) =>
+    fetchAPI<ComposeStack[]>(`/compose-stacks?projectId=${encodeURIComponent(projectId)}`),
+
+  get: (id: string) => fetchAPI<ComposeStack>(`/compose-stacks/${id}`),
+
+  create: (data: CreateComposeStackRequest) =>
+    fetchAPI<ComposeStack>("/compose-stacks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateComposeStackRequest) =>
+    fetchAPI<ComposeStack>(`/compose-stacks/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchAPI<{ message: string }>(`/compose-stacks/${id}`, { method: "DELETE" }),
+
+  deploy: (id: string) =>
+    fetchAPI<{ message: string; output?: string; stack?: ComposeStack }>(
+      `/compose-stacks/${id}/deploy`,
+      { method: "POST" },
+    ),
+
+  undeploy: (id: string) =>
+    fetchAPI<{ message: string; output?: string; stack?: ComposeStack }>(
+      `/compose-stacks/${id}/undeploy`,
+      { method: "POST" },
+    ),
+};
+
+// ==================== TRAEFIK (LOCAL) ====================
+
+export const traefikAPI = {
+  status: () => fetchAPI<TraefikStatusResponse>("/traefik/status"),
+
+  apply: (data: UpdateTraefikConfigRequest) =>
+    fetchAPI<{ message: string; output?: string; config?: unknown }>(
+      "/traefik/apply",
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+
+  logs: (tail = "200") =>
+    fetchAPI<{ logs: string }>(`/traefik/logs?tail=${encodeURIComponent(tail)}`),
 };
 
 // ==================== NGINX ====================

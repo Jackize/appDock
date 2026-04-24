@@ -15,6 +15,7 @@ import {
   useBulkRemoveImages,
   useImages,
   usePullImage,
+  useRegistryProjects,
   useRemoveImage,
 } from "@/hooks/useDocker";
 import { formatBytes, formatRelativeTime, truncate } from "@/lib/utils";
@@ -45,6 +46,11 @@ export function Images() {
   const [imageToDelete, setImageToDelete] = useState<Image | null>(null);
   const [pullDialogOpen, setPullDialogOpen] = useState(false);
   const [pullImageName, setPullImageName] = useState("");
+  const [pullUseRegistry, setPullUseRegistry] = useState(false);
+  const [pullRegistryId, setPullRegistryId] = useState("");
+  const [pullRepository, setPullRepository] = useState("");
+  const [pullTag, setPullTag] = useState("latest");
+  const { data: registryProjects } = useRegistryProjects();
 
   // State cho bulk selection
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
@@ -96,6 +102,24 @@ export function Images() {
   };
 
   const handlePull = () => {
+    if (pullUseRegistry) {
+      if (!pullRegistryId || !pullRepository.trim()) return;
+      pullMutation.mutate(
+        {
+          registryProjectId: pullRegistryId,
+          repository: pullRepository.trim(),
+          tag: pullTag.trim() || "latest",
+        },
+        {
+          onSuccess: () => {
+            setPullDialogOpen(false);
+            setPullRepository("");
+            setPullTag("latest");
+          },
+        },
+      );
+      return;
+    }
     if (pullImageName.trim()) {
       pullMutation.mutate(pullImageName.trim(), {
         onSuccess: () => {
@@ -105,6 +129,10 @@ export function Images() {
       });
     }
   };
+
+  const pullDisabled = pullUseRegistry
+    ? !pullRegistryId || !pullRepository.trim() || pullMutation.isPending
+    : !pullImageName.trim() || pullMutation.isPending;
 
   // Toggle chọn một image
   const toggleImageSelection = (imageId: string) => {
@@ -528,25 +556,78 @@ export function Images() {
       )}
 
       {/* Pull Image Dialog */}
-      <Dialog.Root open={pullDialogOpen} onOpenChange={setPullDialogOpen}>
+      <Dialog.Root
+        open={pullDialogOpen}
+        onOpenChange={(open) => {
+          setPullDialogOpen(open);
+          if (!open) {
+            setPullUseRegistry(false);
+            setPullRegistryId("");
+            setPullRepository("");
+            setPullTag("latest");
+          }
+        }}
+      >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background-secondary border border-border rounded-xl p-6 w-full max-w-md z-50">
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background-secondary border border-border rounded-xl p-6 w-full max-w-md z-50 max-h-[90vh] overflow-y-auto">
             <Dialog.Title className="text-lg font-semibold text-text-primary">
               Pull Image
             </Dialog.Title>
             <Dialog.Description className="text-sm text-text-secondary mt-2">
-              Nhập tên image để tải về từ Docker Hub
+              {pullUseRegistry
+                ? "Dùng Registry project (Harbor / GHCR / private) với repository dưới namespace đã cấu hình."
+                : "Nhập reference đầy đủ (Docker Hub hoặc registry khác)."}
             </Dialog.Description>
-            <div className="mt-4">
-              <input
-                type="text"
-                placeholder="Ví dụ: nginx:latest, postgres:15"
-                value={pullImageName}
-                onChange={(e) => setPullImageName(e.target.value)}
-                className="input w-full"
-                autoFocus
-              />
+            <div className="mt-4 space-y-3">
+              <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pullUseRegistry}
+                  onChange={(e) => setPullUseRegistry(e.target.checked)}
+                  className="rounded border-border"
+                />
+                Pull qua Registry project
+              </label>
+              {pullUseRegistry ? (
+                <>
+                  <select
+                    value={pullRegistryId}
+                    onChange={(e) => setPullRegistryId(e.target.value)}
+                    className="input w-full"
+                  >
+                    <option value="">Chọn registry project…</option>
+                    {(registryProjects ?? []).map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.host})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Repository, ví dụ: nginx hoặc myapp/api"
+                    value={pullRepository}
+                    onChange={(e) => setPullRepository(e.target.value)}
+                    className="input w-full"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tag (mặc định latest)"
+                    value={pullTag}
+                    onChange={(e) => setPullTag(e.target.value)}
+                    className="input w-full"
+                  />
+                </>
+              ) : (
+                <input
+                  type="text"
+                  placeholder="Ví dụ: nginx:latest, ghcr.io/org/app:main"
+                  value={pullImageName}
+                  onChange={(e) => setPullImageName(e.target.value)}
+                  className="input w-full"
+                  autoFocus
+                />
+              )}
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <Dialog.Close asChild>
@@ -555,7 +636,7 @@ export function Images() {
               <Button
                 onClick={handlePull}
                 loading={pullMutation.isPending}
-                disabled={!pullImageName.trim()}
+                disabled={pullDisabled}
               >
                 <Download className="w-4 h-4" />
                 Pull

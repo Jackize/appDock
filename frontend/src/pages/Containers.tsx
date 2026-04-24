@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/Table";
 import {
   useContainers,
+  useContainerInspect,
   useRemoveContainer,
   useRestartContainer,
   useStartContainer,
@@ -23,17 +24,20 @@ import { useAppStore } from "@/stores/appStore";
 import type { Container } from "@/types";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import * as Collapsible from "@radix-ui/react-collapsible";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Box,
   ChevronDown,
   ChevronRight,
   Container as ContainerIcon,
+  Copy,
   FileText,
   Layers,
   MoreVertical,
   Play,
   RotateCcw,
+  Search,
   Square,
   Terminal,
   Trash2,
@@ -60,6 +64,13 @@ export function Containers() {
   );
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set(["__standalone__"])
+  );
+  const [inspectDialogOpen, setInspectDialogOpen] = useState(false);
+  const [inspectTarget, setInspectTarget] = useState<Container | null>(null);
+
+  const inspectQuery = useContainerInspect(
+    inspectTarget?.id ?? "",
+    inspectDialogOpen && !!inspectTarget
   );
 
   const startMutation = useStartContainer();
@@ -163,6 +174,21 @@ export function Containers() {
         { id: containerToDelete.id, force: true },
         { onSuccess: () => setContainerToDelete(null) }
       );
+    }
+  };
+
+  const handleInspect = (container: Container) => {
+    setInspectTarget(container);
+    setInspectDialogOpen(true);
+  };
+
+  const handleCopyInspect = async () => {
+    const data = inspectQuery.data;
+    if (!data) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    } catch {
+      // ignore clipboard errors (permissions)
     }
   };
 
@@ -288,6 +314,13 @@ export function Containers() {
                   {container.state !== "running" && (
                     <span className="text-xs text-text-muted ml-auto">(cần chạy)</span>
                   )}
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary hover:bg-background-hover rounded cursor-pointer outline-none"
+                  onClick={() => handleInspect(container)}
+                >
+                  <Search className="w-4 h-4" />
+                  Inspect
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary hover:bg-background-hover rounded cursor-pointer outline-none"
@@ -574,6 +607,77 @@ export function Containers() {
           </AlertDialog.Content>
         </AlertDialog.Portal>
       </AlertDialog.Root>
+
+      {/* Inspect dialog */}
+      <Dialog.Root
+        open={inspectDialogOpen}
+        onOpenChange={(open) => {
+          setInspectDialogOpen(open);
+          if (!open) {
+            setInspectTarget(null);
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background-secondary border border-border rounded-xl p-6 w-[95vw] max-w-4xl z-50 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <Dialog.Title className="text-lg font-semibold text-text-primary">
+                  Inspect container
+                </Dialog.Title>
+                <Dialog.Description className="text-sm text-text-secondary mt-1">
+                  {inspectTarget ? (
+                    <>
+                      <span className="font-medium text-text-primary">
+                        {inspectTarget.name}
+                      </span>{" "}
+                      <span className="text-text-muted font-mono text-xs">
+                        ({inspectTarget.id})
+                      </span>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </Dialog.Description>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleCopyInspect}
+                  disabled={!inspectQuery.data}
+                  title="Copy JSON"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy
+                </Button>
+                <Dialog.Close asChild>
+                  <Button variant="secondary" size="sm">
+                    Đóng
+                  </Button>
+                </Dialog.Close>
+              </div>
+            </div>
+
+            <div className="mt-4 flex-1 overflow-auto rounded-lg border border-border bg-background-tertiary">
+              {inspectQuery.isLoading ? (
+                <div className="p-4 text-sm text-text-muted">Đang tải…</div>
+              ) : inspectQuery.error ? (
+                <div className="p-4 text-sm text-status-stopped">
+                  Lỗi: {(inspectQuery.error as Error).message}
+                </div>
+              ) : inspectQuery.data ? (
+                <pre className="p-4 text-xs text-text-secondary whitespace-pre-wrap break-words font-mono">
+                  {JSON.stringify(inspectQuery.data, null, 2)}
+                </pre>
+              ) : (
+                <div className="p-4 text-sm text-text-muted">Không có dữ liệu</div>
+              )}
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }
