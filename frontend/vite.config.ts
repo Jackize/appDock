@@ -17,11 +17,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: process.env.PROXY_TARGET || 'http://localhost:8080',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8080',
+        target: process.env.WS_PROXY_TARGET || 'ws://localhost:8080',
         ws: true,
       },
     },

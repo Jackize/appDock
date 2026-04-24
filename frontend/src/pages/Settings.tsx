@@ -354,7 +354,7 @@ export function Settings() {
           <div>
             <h2 className="text-lg font-semibold text-text-primary">Traefik (local)</h2>
             <p className="text-sm text-text-secondary mt-1">
-              Bật Traefik để tự động cấp wildcard TLS (Cloudflare DNS-01) và route subdomain cho apps deploy trên local Docker.
+              Bật Traefik để tự động cấp wildcard TLS (DNS-01) và route subdomain cho apps deploy trên local Docker.
             </p>
             <p className="text-xs text-text-muted mt-2">
               Trạng thái: {traefikStatus?.running ? "Running" : "Stopped"} {traefikStatus?.status ? `(${traefikStatus.status})` : ""}
@@ -390,10 +390,10 @@ export function Settings() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Cloudflare API Token (DNS Edit)</label>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">DNS Provider API Token (DNS Edit)</label>
             <input
               className="input w-full font-mono text-xs"
-              placeholder="CF_DNS_API_TOKEN"
+              placeholder="DNS_API_TOKEN"
               value={traefikForm.cloudflareToken}
               onChange={(e) => setTraefikForm((p) => ({ ...p, cloudflareToken: e.target.value }))}
             />

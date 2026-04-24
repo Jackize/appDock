@@ -353,7 +353,6 @@ appdock/
 │
 ├── frontend/                # React Frontend
 │   ├── Dockerfile           # Frontend-only Dockerfile (dev)
-│   ├── nginx.conf
 │   └── src/
 │       ├── components/      # UI components
 │       ├── pages/           # Page components

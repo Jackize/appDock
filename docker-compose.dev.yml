@@ -30,9 +30,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:80"
+      - "5173:5173"
     depends_on:
       - backend
+    environment:
+      - PROXY_TARGET=http://backend:8080
+      - WS_PROXY_TARGET=ws://backend:8080
     restart: unless-stopped
     networks:
       - appdock-network

@@ -110,7 +110,7 @@ types/                     # TypeScript interfaces
 |------|-------------|
 | Production (`Dockerfile`) | Multi-stage: Node builds React → Go builds backend → Alpine final image. Go binary serves `/assets/*` statically and proxies everything else. Port 3000. |
 | Dev backend (`backend/Dockerfile`) | Go only, port 8080. |
-| Dev frontend (`frontend/Dockerfile`) | Nginx serving built assets, proxies `/api/*` to backend. Port 80. |
+| Dev frontend (`frontend/Dockerfile`) | Vite dev server (HMR). Port 5173. |
 
 ### Authentication
 
