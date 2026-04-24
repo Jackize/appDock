@@ -8,11 +8,8 @@ import { Dashboard } from "./pages/Dashboard";
 import { Images } from "./pages/Images";
 import { Login } from "./pages/Login";
 import { Networks } from "./pages/Networks";
-import { Nginx } from "./pages/Nginx";
-import { DNS } from "./pages/DNS";
 import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
-import Security from "./pages/Security";
 import { AuthCallback } from "./pages/AuthCallback";
 import { Projects } from "./pages/Projects";
 import { RegistryProjects } from "./pages/RegistryProjects";
@@ -133,10 +130,7 @@ function App() {
                   <Route path="/images" element={<Images />} />
                   <Route path="/networks" element={<Networks />} />
                   <Route path="/volumes" element={<Volumes />} />
-                  <Route path="/nginx" element={<Nginx />} />
-                  <Route path="/dns" element={<DNS />} />
                   <Route path="/servers" element={<Servers />} />
-                  <Route path="/security" element={<Security />} />
                   <Route path="/members" element={<Members />} />
                   <Route path="/settings" element={<Settings />} />
                 </Routes>

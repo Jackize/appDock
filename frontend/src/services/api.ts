@@ -1,26 +1,16 @@
 import { getAuthToken, useAuthStore } from "@/stores/authStore";
 import type {
-  Certificate,
-  CloudflareCreateDNSRecordRequest,
-  CloudflareDNSRecord,
-  CloudflareUpdateDNSRecordRequest,
-  CloudflareZone,
   Container,
   ContainerDetail,
   ContainerStats,
-  CreateDomainRequest,
   CreateServerRequest,
   DockerStatusResponse,
-  Domain,
   Image,
   Network,
-  NginxStatus,
-  RequestCertificateRequest,
   Server,
   SystemInfoResponse,
   SystemStats,
   TestConnectionResponse,
-  UpdateDomainRequest,
   UpdateServerRequest,
   Project,
   CreateProjectRequest,
@@ -35,8 +25,6 @@ import type {
   TraefikStatusResponse,
   UpdateTraefikConfigRequest,
   Volume,
-  NetworkSnapshot,
-  SecurityReport,
 } from "@/types";
 
 const API_BASE = "/api";
@@ -101,20 +89,6 @@ async function fetchAPI<T>(
   }
 
   return response.json();
-}
-
-async function fetchAPIWithExtraHeaders<T>(
-  endpoint: string,
-  options?: RequestInit,
-  extraHeaders?: Record<string, string>,
-): Promise<T> {
-  return fetchAPI<T>(endpoint, {
-    ...options,
-    headers: {
-      ...(options?.headers || {}),
-      ...(extraHeaders || {}),
-    },
-  });
 }
 
 // ==================== AUTH ====================
@@ -465,222 +439,4 @@ export const traefikAPI = {
 
   logs: (tail = "200") =>
     fetchAPI<{ logs: string }>(`/traefik/logs?tail=${encodeURIComponent(tail)}`),
-};
-
-// ==================== NGINX ====================
-
-export const nginxAPI = {
-  getStatus: () => fetchAPI<NginxStatus>("/nginx/status"),
-
-  install: () =>
-    fetchAPI<{ message: string }>("/nginx/install", { method: "POST" }),
-
-  installCertbot: () =>
-    fetchAPI<{ message: string }>("/nginx/install-certbot", { method: "POST" }),
-
-  start: () =>
-    fetchAPI<{ message: string }>("/nginx/start", { method: "POST" }),
-
-  stop: () => fetchAPI<{ message: string }>("/nginx/stop", { method: "POST" }),
-
-  reload: () =>
-    fetchAPI<{ message: string }>("/nginx/reload", { method: "POST" }),
-
-  testConfig: () =>
-    fetchAPI<{ valid: boolean; output: string }>("/nginx/test", {
-      method: "POST",
-    }),
-
-  // Domains
-  listDomains: () => fetchAPI<Domain[]>("/nginx/domains"),
-
-  getDomain: (id: string) => fetchAPI<Domain>(`/nginx/domains/${id}`),
-
-  createDomain: (data: CreateDomainRequest) =>
-    fetchAPI<Domain>("/nginx/domains", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  updateDomain: (id: string, data: UpdateDomainRequest) =>
-    fetchAPI<Domain>(`/nginx/domains/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
-
-  deleteDomain: (id: string) =>
-    fetchAPI<{ message: string }>(`/nginx/domains/${id}`, {
-      method: "DELETE",
-    }),
-
-  enableDomain: (id: string) =>
-    fetchAPI<{ message: string }>(`/nginx/domains/${id}/enable`, {
-      method: "POST",
-    }),
-
-  disableDomain: (id: string) =>
-    fetchAPI<{ message: string }>(`/nginx/domains/${id}/disable`, {
-      method: "POST",
-    }),
-
-  getDomainConfig: (id: string) =>
-    fetchAPI<{ config: string }>(`/nginx/domains/${id}/config`),
-
-  // SSL Certificates
-  listCertificates: () => fetchAPI<Certificate[]>("/nginx/certificates"),
-
-  requestCertificate: (data: RequestCertificateRequest) =>
-    fetchAPI<{ message: string }>("/nginx/certificates", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  revokeCertificate: (domain: string) =>
-    fetchAPI<{ message: string }>(`/nginx/certificates/${domain}`, {
-      method: "DELETE",
-    }),
-};
-
-// ==================== DNS (Cloudflare) ====================
-
-type CloudflareAuthParams = {
-  token?: string;
-  email?: string;
-  apiKey?: string;
-};
-
-/** Builds request headers for Cloudflare API token or Global Key auth. */
-function cloudflareAuthHeaders(
-  params: CloudflareAuthParams,
-): Record<string, string> | undefined {
-  if (params.token) {
-    return { "X-Cloudflare-Token": params.token };
-  }
-  if (params.email && params.apiKey) {
-    return {
-      "X-Cloudflare-Email": params.email,
-      "X-Cloudflare-Key": params.apiKey,
-    };
-  }
-  return undefined;
-}
-
-export const securityAPI = {
-  getSnapshot: () => fetchAPI<NetworkSnapshot>("/security/snapshot"),
-
-  listReports: (params?: {
-    serverId?: string;
-    severity?: string;
-    status?: string;
-  }) => {
-    const q = new URLSearchParams();
-    if (params?.serverId) q.set("serverId", params.serverId);
-    if (params?.severity) q.set("severity", params.severity);
-    if (params?.status) q.set("status", params.status);
-    const suffix = q.toString() ? `?${q.toString()}` : "";
-    return fetchAPI<SecurityReport[]>(`/security/reports${suffix}`);
-  },
-
-  getReport: (id: string) => fetchAPI<SecurityReport>(`/security/reports/${id}`),
-
-  patchReport: (
-    id: string,
-    body: { status?: SecurityReport["status"]; notes?: string },
-  ) =>
-    fetchAPI<SecurityReport>(`/security/reports/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
-
-  analyze: (body?: { serverId?: string; force?: boolean }) =>
-    fetchAPI<SecurityReport>("/security/analyze", {
-      method: "POST",
-      body: JSON.stringify(body ?? {}),
-    }),
-
-  chat: (body: {
-    messages: { role: string; content: string }[];
-    reportId?: string;
-  }) =>
-    fetchAPI<{ reply: string }>("/security/chat", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-};
-
-export const dnsAPI = {
-  cloudflare: {
-    verify: (params: CloudflareAuthParams) =>
-      fetchAPIWithExtraHeaders<Record<string, unknown>>(
-        `/dns/cloudflare/verify`,
-        undefined,
-        cloudflareAuthHeaders(params),
-      ),
-
-    listZones: (params: CloudflareAuthParams & { name?: string }) => {
-      const q = new URLSearchParams();
-      if (params.name) q.set("name", params.name);
-      return fetchAPIWithExtraHeaders<CloudflareZone[]>(
-        `/dns/cloudflare/zones${q.toString() ? `?${q.toString()}` : ""}`,
-        undefined,
-        cloudflareAuthHeaders(params),
-      );
-    },
-
-    listRecords: (
-      params: CloudflareAuthParams & {
-        zoneId: string;
-        type?: string;
-        name?: string;
-      },
-    ) => {
-      const q = new URLSearchParams();
-      if (params.type) q.set("type", params.type);
-      if (params.name) q.set("name", params.name);
-      return fetchAPIWithExtraHeaders<CloudflareDNSRecord[]>(
-        `/dns/cloudflare/zones/${params.zoneId}/records${
-          q.toString() ? `?${q.toString()}` : ""
-        }`,
-        undefined,
-        cloudflareAuthHeaders(params),
-      );
-    },
-
-    createRecord: (
-      params: CloudflareAuthParams & {
-        zoneId: string;
-        data: CloudflareCreateDNSRecordRequest;
-      },
-    ) =>
-      fetchAPIWithExtraHeaders<CloudflareDNSRecord>(
-        `/dns/cloudflare/zones/${params.zoneId}/records`,
-        { method: "POST", body: JSON.stringify(params.data) },
-        cloudflareAuthHeaders(params),
-      ),
-
-    updateRecord: (
-      params: CloudflareAuthParams & {
-        zoneId: string;
-        recordId: string;
-        data: CloudflareUpdateDNSRecordRequest;
-      },
-    ) =>
-      fetchAPIWithExtraHeaders<CloudflareDNSRecord>(
-        `/dns/cloudflare/zones/${params.zoneId}/records/${params.recordId}`,
-        { method: "PUT", body: JSON.stringify(params.data) },
-        cloudflareAuthHeaders(params),
-      ),
-
-    deleteRecord: (
-      params: CloudflareAuthParams & {
-        zoneId: string;
-        recordId: string;
-      },
-    ) =>
-      fetchAPIWithExtraHeaders<{ message: string }>(
-        `/dns/cloudflare/zones/${params.zoneId}/records/${params.recordId}`,
-        { method: "DELETE" },
-        cloudflareAuthHeaders(params),
-      ),
-  },
 };
