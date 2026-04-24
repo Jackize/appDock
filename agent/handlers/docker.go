@@ -20,6 +20,11 @@ type DockerHandler struct {
 	ctx    context.Context
 }
 
+const (
+	defaultLogTailLines = 100
+	maxLogTailLines     = 2000
+)
+
 func NewDockerHandler(socketPath string) (*DockerHandler, error) {
 	cli, err := client.NewClientWithOpts(
 		client.WithHost("unix://"+socketPath),
@@ -60,6 +65,36 @@ func (h *DockerHandler) GetVersion(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, version)
+}
+
+type DockerSummary struct {
+	ContainersRunning int `json:"containersRunning"`
+	ContainersStopped int `json:"containersStopped"`
+	ImagesCount       int `json:"imagesCount"`
+	VolumesCount      int `json:"volumesCount"`
+	NetworksCount     int `json:"networksCount"`
+}
+
+func (h *DockerHandler) GetSummary(c *gin.Context) {
+	summary := DockerSummary{}
+
+	info, err := h.client.Info(h.ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	summary.ContainersRunning = info.ContainersRunning
+	summary.ContainersStopped = info.ContainersStopped
+	summary.ImagesCount = info.Images
+
+	if volumes, err := h.client.VolumeList(h.ctx, volume.ListOptions{}); err == nil {
+		summary.VolumesCount = len(volumes.Volumes)
+	}
+	if networks, err := h.client.NetworkList(h.ctx, network.ListOptions{}); err == nil {
+		summary.NetworksCount = len(networks)
+	}
+
+	c.JSON(http.StatusOK, summary)
 }
 
 // ==================== Containers ====================
@@ -173,7 +208,7 @@ func (h *DockerHandler) RemoveContainer(c *gin.Context) {
 
 func (h *DockerHandler) GetContainerLogs(c *gin.Context) {
 	id := c.Param("id")
-	tail := c.DefaultQuery("tail", "100")
+	tail := boundedLogTail(c.Query("tail"))
 
 	reader, err := h.client.ContainerLogs(h.ctx, id, container.LogsOptions{
 		ShowStdout: true,
@@ -280,11 +315,11 @@ func (h *DockerHandler) GetContainerStats(c *gin.Context) {
 // ==================== Images ====================
 
 type ImageInfo struct {
-	ID         string            `json:"id"`
-	RepoTags   []string          `json:"repoTags"`
-	Created    int64             `json:"created"`
-	Size       int64             `json:"size"`
-	Labels     map[string]string `json:"labels"`
+	ID       string            `json:"id"`
+	RepoTags []string          `json:"repoTags"`
+	Created  int64             `json:"created"`
+	Size     int64             `json:"size"`
+	Labels   map[string]string `json:"labels"`
 }
 
 func (h *DockerHandler) ListImages(c *gin.Context) {
@@ -530,4 +565,18 @@ func parseInt(s string, def int) int {
 		return i
 	}
 	return def
+}
+
+func boundedLogTail(raw string) string {
+	if raw == "" {
+		return strconv.Itoa(defaultLogTailLines)
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 {
+		return strconv.Itoa(defaultLogTailLines)
+	}
+	if n > maxLogTailLines {
+		return strconv.Itoa(maxLogTailLines)
+	}
+	return strconv.Itoa(n)
 }

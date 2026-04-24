@@ -2,12 +2,15 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 )
+
+const maxAgentResponseBytes int64 = 64 << 20
 
 type AgentClient struct {
 	baseURL    string
@@ -17,15 +20,19 @@ type AgentClient struct {
 
 func NewAgentClient(host, apiKey string) *AgentClient {
 	return &AgentClient{
-		baseURL: host,
-		apiKey:  apiKey,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		baseURL:    host,
+		apiKey:     apiKey,
+		httpClient: &http.Client{},
 	}
 }
 
 func (c *AgentClient) doRequest(method, path string, body interface{}) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return c.doRequestWithContext(ctx, method, path, body)
+}
+
+func (c *AgentClient) doRequestWithContext(ctx context.Context, method, path string, body interface{}) ([]byte, error) {
 	url := c.baseURL + path
 
 	var reqBody io.Reader
@@ -37,7 +44,7 @@ func (c *AgentClient) doRequest(method, path string, body interface{}) ([]byte, 
 		reqBody = bytes.NewBuffer(jsonBody)
 	}
 
-	req, err := http.NewRequest(method, url, reqBody)
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
 		return nil, err
 	}
@@ -51,9 +58,13 @@ func (c *AgentClient) doRequest(method, path string, body interface{}) ([]byte, 
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	limitedBody := io.LimitReader(resp.Body, maxAgentResponseBytes+1)
+	respBody, err := io.ReadAll(limitedBody)
 	if err != nil {
 		return nil, err
+	}
+	if int64(len(respBody)) > maxAgentResponseBytes {
+		return nil, fmt.Errorf("agent response exceeded %d bytes", maxAgentResponseBytes)
 	}
 
 	if resp.StatusCode >= 400 {
@@ -160,6 +171,28 @@ func (c *AgentClient) GetDockerVersion() (json.RawMessage, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+type AgentDockerSummary struct {
+	ContainersRunning int `json:"containersRunning"`
+	ContainersStopped int `json:"containersStopped"`
+	ImagesCount       int `json:"imagesCount"`
+	VolumesCount      int `json:"volumesCount"`
+	NetworksCount     int `json:"networksCount"`
+}
+
+func (c *AgentClient) GetDockerSummary() (*AgentDockerSummary, error) {
+	data, err := c.doRequest("GET", "/api/docker/summary", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var summary AgentDockerSummary
+	if err := json.Unmarshal(data, &summary); err != nil {
+		return nil, err
+	}
+
+	return &summary, nil
 }
 
 // Containers
@@ -280,8 +313,7 @@ func (c *AgentClient) RemoveVolume(name string, force bool) error {
 
 // doRequestWithTimeout is like doRequest but with a custom timeout
 func (c *AgentClient) doRequestWithTimeout(method, path string, body interface{}, timeout time.Duration) ([]byte, error) {
-	oldTimeout := c.httpClient.Timeout
-	c.httpClient.Timeout = timeout
-	defer func() { c.httpClient.Timeout = oldTimeout }()
-	return c.doRequest(method, path, body)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return c.doRequestWithContext(ctx, method, path, body)
 }

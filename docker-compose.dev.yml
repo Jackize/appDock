@@ -1,45 +1,69 @@
-version: "3.8"
+name: appdock-dev
 
-# =============================================================================
-# AppDock - Development Mode (2 containers riêng biệt)
-# Dùng khi phát triển để hot-reload code
-# Usage: docker compose -f docker-compose.dev.yml up -d
-# =============================================================================
+# Development stack:
+# - Backend runs with Air so Go code changes restart the API.
+# - Frontend runs Vite with HMR.
+# - Dependencies live in container volumes instead of polluting the host.
 
 services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    container_name: appdock-backend-dev
+    working_dir: /app
+    command: air -c .air.toml
     ports:
-      - "8080:8080"
+      - "${APPDOCK_BACKEND_PORT:-8080}:8080"
     volumes:
+      - ./backend:/app
       - /var/run/docker.sock:/var/run/docker.sock
+      - appdock-backend-data:/app/data
+      - appdock-backend-tmp:/app/tmp
+      - appdock-go-build-cache:/root/.cache/go-build
     environment:
-      - PORT=8080
-      - APPDOCK_USERNAME=admin
-      - APPDOCK_PASSWORD=appdock
-      - APPDOCK_JWT_SECRET=dev-secret-key-not-for-production
-      - APPDOCK_AUTH_DISABLED=false
+      PORT: "8080"
+      GIN_MODE: debug
+      APPDOCK_DATA_DIR: /app/data
+      APPDOCK_USERNAME: admin
+      APPDOCK_PASSWORD: appdock
+      APPDOCK_JWT_SECRET: dev-secret-key-not-for-production
+      APPDOCK_AUTH_DISABLED: "false"
+      APPDOCK_PUBLIC_URL: "http://localhost:${APPDOCK_FRONTEND_PORT:-5173}"
+      APPDOCK_WS_ALLOWED_ORIGINS: "http://localhost:${APPDOCK_FRONTEND_PORT:-5173},http://127.0.0.1:${APPDOCK_FRONTEND_PORT:-5173}"
     restart: unless-stopped
     networks:
-      - appdock-network
+      - appdock-dev
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    container_name: appdock-frontend-dev
+    working_dir: /app
     ports:
-      - "5173:5173"
+      - "${APPDOCK_FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - appdock-frontend-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      PROXY_TARGET: http://backend:8080
+      WS_PROXY_TARGET: ws://backend:8080
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     depends_on:
       - backend
-    environment:
-      - PROXY_TARGET=http://backend:8080
-      - WS_PROXY_TARGET=ws://backend:8080
     restart: unless-stopped
     networks:
-      - appdock-network
+      - appdock-dev
+
+volumes:
+  appdock-backend-data:
+  appdock-backend-tmp:
+  appdock-go-build-cache:
+  appdock-frontend-node-modules:
 
 networks:
-  appdock-network:
+  appdock-dev:
     driver: bridge

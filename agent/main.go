@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	"appdock-agent/handlers"
 	"appdock-agent/middleware"
@@ -77,6 +79,7 @@ func main() {
 			{
 				docker.GET("/info", dockerHandler.GetInfo)
 				docker.GET("/version", dockerHandler.GetVersion)
+				docker.GET("/summary", dockerHandler.GetSummary)
 
 				// Containers
 				docker.GET("/containers", dockerHandler.ListContainers)
@@ -117,7 +120,15 @@ func main() {
 		log.Printf("⚠️  Docker not available")
 	}
 
-	if err := router.Run(":" + *port); err != nil {
+	srv := &http.Server{
+		Addr:              ":" + *port,
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+	}
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

@@ -69,7 +69,8 @@ dev-docker: ## Chạy development mode (Docker - 2 containers)
 	$(DOCKER_COMPOSE) -f docker-compose.dev.yml up -d --build
 	@echo ""
 	@echo "✅ Development mode running!"
-	@echo "🌐 Open http://localhost:3000 in your browser"
+	@echo "🌐 Open http://localhost:5173 in your browser"
+	@echo "📋 Logs: docker compose -f docker-compose.dev.yml logs -f"
 
 build: ## Build Docker image (single image)
 	@echo "🔨 Building AppDock Docker image..."

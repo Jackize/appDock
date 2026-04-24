@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"appdock/internal/middleware"
@@ -17,6 +18,11 @@ import (
 type ContainerHandler struct {
 	serverManager *services.ServerManager
 }
+
+const (
+	defaultLogTailLines = 100
+	maxLogTailLines     = 2000
+)
 
 func NewContainerHandler(sm *services.ServerManager) *ContainerHandler {
 	return &ContainerHandler{serverManager: sm}
@@ -107,7 +113,7 @@ func (h *ContainerHandler) RemoveContainer(c *gin.Context) {
 func (h *ContainerHandler) GetContainerLogs(c *gin.Context) {
 	serverID := GetServerIDFromRequest(c)
 	id := c.Param("id")
-	tail := c.DefaultQuery("tail", "100")
+	tail := boundedLogTail(c.Query("tail"))
 	logs, err := h.serverManager.GetContainerLogs(serverID, id, tail)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -349,7 +355,23 @@ func cleanLogLine(line string) string {
 		}
 	}
 	return strings.TrimSpace(line)
-} // cleanTerminalOutput xử lý output từ Docker exec
+}
+
+func boundedLogTail(raw string) string {
+	if raw == "" {
+		return strconv.Itoa(defaultLogTailLines)
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 {
+		return strconv.Itoa(defaultLogTailLines)
+	}
+	if n > maxLogTailLines {
+		return strconv.Itoa(maxLogTailLines)
+	}
+	return strconv.Itoa(n)
+}
+
+// cleanTerminalOutput xử lý output từ Docker exec
 func cleanTerminalOutput(data []byte) string {
 	// Docker multiplexed stream có header 8 bytes cho mỗi frame
 	// [type][0][0][0][size1][size2][size3][size4][payload]

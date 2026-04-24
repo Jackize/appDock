@@ -8,6 +8,8 @@ import (
 	"appdock/internal/models"
 )
 
+const maxConcurrentHealthChecks = 16
+
 type ServerManager struct {
 	store        *ServerStore
 	localDocker  *DockerService
@@ -23,14 +25,16 @@ func NewServerManager(store *ServerStore, localDocker *DockerService) *ServerMan
 	}
 
 	// Initialize agent clients for existing servers
-	for _, server := range store.List() {
-		if !server.IsLocal {
-			sm.agentClients[server.ID] = NewAgentClient(server.Host, server.APIKey)
+	if store != nil {
+		for _, server := range store.List() {
+			if !server.IsLocal {
+				sm.agentClients[server.ID] = NewAgentClient(server.Host, server.APIKey)
+			}
 		}
-	}
 
-	// Start health check
-	go sm.healthCheckLoop()
+		// Start health check
+		go sm.healthCheckLoop()
+	}
 
 	return sm
 }
@@ -48,31 +52,51 @@ func (m *ServerManager) healthCheckLoop() {
 }
 
 func (m *ServerManager) checkAllServers() {
-	servers := m.store.List()
-	for _, server := range servers {
-		var status models.ServerStatus
-
-		if server.IsLocal {
-			if m.localDocker.IsConnected() {
-				status = models.ServerStatusOnline
-			} else {
-				status = models.ServerStatusOffline
-			}
-		} else {
-			client := m.getAgentClient(server.ID)
-			if client != nil {
-				if err := client.Health(); err == nil {
-					status = models.ServerStatusOnline
-				} else {
-					status = models.ServerStatusOffline
-				}
-			} else {
-				status = models.ServerStatusOffline
-			}
-		}
-
-		m.store.UpdateStatus(server.ID, status)
+	if m.store == nil {
+		return
 	}
+
+	servers := m.store.List()
+	var wg sync.WaitGroup
+	var statusesMu sync.Mutex
+	statuses := make(map[string]models.ServerStatus, len(servers))
+	sem := make(chan struct{}, maxConcurrentHealthChecks)
+
+	for _, server := range servers {
+		server := server
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			status := m.checkServerStatus(server)
+			statusesMu.Lock()
+			statuses[server.ID] = status
+			statusesMu.Unlock()
+		}()
+	}
+
+	wg.Wait()
+	m.store.UpdateStatuses(statuses)
+}
+
+func (m *ServerManager) checkServerStatus(server *models.Server) models.ServerStatus {
+	if server.IsLocal {
+		if m.localDocker != nil && m.localDocker.IsConnected() {
+			return models.ServerStatusOnline
+		}
+		return models.ServerStatusOffline
+	}
+
+	client := m.getAgentClient(server.ID)
+	if client == nil {
+		return models.ServerStatusOffline
+	}
+	if err := client.Health(); err == nil {
+		return models.ServerStatusOnline
+	}
+	return models.ServerStatusOffline
 }
 
 func (m *ServerManager) getAgentClient(serverID string) *AgentClient {
@@ -163,6 +187,14 @@ type CombinedSystemStats struct {
 	NetworksCount     int `json:"networksCount"`
 }
 
+type dockerCounts struct {
+	containersRunning int
+	containersStopped int
+	imagesCount       int
+	volumesCount      int
+	networksCount     int
+}
+
 func (m *ServerManager) GetSystemStats(serverID string) (*CombinedSystemStats, error) {
 	if m.IsLocal(serverID) {
 		// Get local stats
@@ -203,47 +235,7 @@ func (m *ServerManager) GetSystemStats(serverID string) (*CombinedSystemStats, e
 		return nil, err
 	}
 
-	// Get Docker stats from agent
-	var containersRunning, containersStopped, imagesCount, volumesCount, networksCount int
-
-	if containersData, err := client.ListContainers(true); err == nil {
-		var containers []json.RawMessage
-		if json.Unmarshal(containersData, &containers) == nil {
-			for _, c := range containers {
-				var ctr struct {
-					State string `json:"state"`
-				}
-				if json.Unmarshal(c, &ctr) == nil {
-					if ctr.State == "running" {
-						containersRunning++
-					} else {
-						containersStopped++
-					}
-				}
-			}
-		}
-	}
-
-	if imagesData, err := client.ListImages(); err == nil {
-		var images []json.RawMessage
-		if json.Unmarshal(imagesData, &images) == nil {
-			imagesCount = len(images)
-		}
-	}
-
-	if volumesData, err := client.ListVolumes(); err == nil {
-		var volumes []json.RawMessage
-		if json.Unmarshal(volumesData, &volumes) == nil {
-			volumesCount = len(volumes)
-		}
-	}
-
-	if networksData, err := client.ListNetworks(); err == nil {
-		var networks []json.RawMessage
-		if json.Unmarshal(networksData, &networks) == nil {
-			networksCount = len(networks)
-		}
-	}
+	counts := m.getRemoteDockerCounts(client)
 
 	return &CombinedSystemStats{
 		CPUUsage:          systemStats.CPUUsage,
@@ -258,12 +250,95 @@ func (m *ServerManager) GetSystemStats(serverID string) (*CombinedSystemStats, e
 		DiskUsed:          systemStats.DiskUsed,
 		DiskFree:          systemStats.DiskFree,
 		DiskUsage:         systemStats.DiskUsage,
-		ContainersRunning: containersRunning,
-		ContainersStopped: containersStopped,
-		ImagesCount:       imagesCount,
-		VolumesCount:      volumesCount,
-		NetworksCount:     networksCount,
+		ContainersRunning: counts.containersRunning,
+		ContainersStopped: counts.containersStopped,
+		ImagesCount:       counts.imagesCount,
+		VolumesCount:      counts.volumesCount,
+		NetworksCount:     counts.networksCount,
 	}, nil
+}
+
+func (m *ServerManager) getRemoteDockerCounts(client *AgentClient) dockerCounts {
+	if summary, err := client.GetDockerSummary(); err == nil {
+		return dockerCounts{
+			containersRunning: summary.ContainersRunning,
+			containersStopped: summary.ContainersStopped,
+			imagesCount:       summary.ImagesCount,
+			volumesCount:      summary.VolumesCount,
+			networksCount:     summary.NetworksCount,
+		}
+	}
+
+	return m.getRemoteDockerCountsFallback(client)
+}
+
+func (m *ServerManager) getRemoteDockerCountsFallback(client *AgentClient) dockerCounts {
+	var counts dockerCounts
+	var wg sync.WaitGroup
+
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		containersData, err := client.ListContainers(true)
+		if err != nil {
+			return
+		}
+		var containers []json.RawMessage
+		if json.Unmarshal(containersData, &containers) != nil {
+			return
+		}
+		for _, c := range containers {
+			var ctr struct {
+				State string `json:"state"`
+			}
+			if json.Unmarshal(c, &ctr) == nil {
+				if ctr.State == "running" {
+					counts.containersRunning++
+				} else {
+					counts.containersStopped++
+				}
+			}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		imagesData, err := client.ListImages()
+		if err != nil {
+			return
+		}
+		var images []json.RawMessage
+		if json.Unmarshal(imagesData, &images) == nil {
+			counts.imagesCount = len(images)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		volumesData, err := client.ListVolumes()
+		if err != nil {
+			return
+		}
+		var volumes []json.RawMessage
+		if json.Unmarshal(volumesData, &volumes) == nil {
+			counts.volumesCount = len(volumes)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		networksData, err := client.ListNetworks()
+		if err != nil {
+			return
+		}
+		var networks []json.RawMessage
+		if json.Unmarshal(networksData, &networks) == nil {
+			counts.networksCount = len(networks)
+		}
+	}()
+
+	wg.Wait()
+	return counts
 }
 
 // ==================== Containers ====================
