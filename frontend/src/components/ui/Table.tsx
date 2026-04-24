@@ -8,8 +8,8 @@ interface TableProps {
 
 export function Table({ children, className }: TableProps) {
   return (
-    <div className={cn('overflow-x-auto rounded-lg border border-border', className)}>
-      <table className="w-full">{children}</table>
+    <div className={cn('-mx-4 overflow-x-auto border-y border-border sm:mx-0 sm:rounded-lg sm:border', className)}>
+      <table className="w-full min-w-[720px]">{children}</table>
     </div>
   )
 }
@@ -66,7 +66,7 @@ export function TableHead({ children, className }: TableHeadProps) {
   return (
     <th
       className={cn(
-        'px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider',
+        'px-3 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider sm:px-4',
         className
       )}
     >
@@ -82,10 +82,9 @@ interface TableCellProps {
 
 export function TableCell({ children, className }: TableCellProps) {
   return (
-    <td className={cn('px-4 py-3 text-sm text-text-primary', className)}>
+    <td className={cn('px-3 py-3 text-sm text-text-primary sm:px-4', className)}>
       {children}
     </td>
   )
 }
-
 

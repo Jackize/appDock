@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonTable } from '@/components/ui/Skeleton'
+import { PageHeader } from '@/components/resource/PageHeader'
 import { useVolumes, useRemoveVolume, useCreateVolume } from '@/hooks/useDocker'
 import { useAppStore } from '@/stores/appStore'
 import { formatBytes, formatDate, truncate } from '@/lib/utils'
@@ -69,23 +70,21 @@ export function Volumes() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Volumes</h1>
-          <p className="text-text-secondary mt-1">
-            Quản lý các Docker volumes
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title="Volumes"
+        description="Quản lý các Docker volumes"
+        actions={
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <span className="text-sm text-text-secondary">
             Tổng cộng: {volumes?.length || 0} volumes
           </span>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="w-4 h-4" />
             Tạo Volume
           </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Table */}
       {isLoading ? (
@@ -201,7 +200,7 @@ export function Volumes() {
       <Dialog.Root open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background-secondary border border-border rounded-xl p-6 w-full max-w-md z-50">
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
             <Dialog.Title className="text-lg font-semibold text-text-primary">
               Tạo Volume Mới
             </Dialog.Title>
@@ -221,7 +220,7 @@ export function Volumes() {
                 autoFocus
               />
             </div>
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Dialog.Close asChild>
                 <Button variant="secondary">Hủy</Button>
               </Dialog.Close>
@@ -245,7 +244,7 @@ export function Volumes() {
       >
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-          <AlertDialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background-secondary border border-border rounded-xl p-6 w-full max-w-md z-50">
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
             <AlertDialog.Title className="text-lg font-semibold text-text-primary">
               Xác nhận xóa volume
             </AlertDialog.Title>
@@ -256,7 +255,7 @@ export function Volumes() {
               </span>
               ? Tất cả dữ liệu trong volume sẽ bị mất vĩnh viễn.
             </AlertDialog.Description>
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <AlertDialog.Cancel asChild>
                 <Button variant="secondary">Hủy</Button>
               </AlertDialog.Cancel>
@@ -276,5 +275,4 @@ export function Volumes() {
     </div>
   )
 }
-
 

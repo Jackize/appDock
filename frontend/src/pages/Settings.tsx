@@ -170,9 +170,9 @@ export function Settings() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Change Username Card */}
-        <div className="bg-background-secondary border border-border rounded-xl p-6">
+        <div className="rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
               <User className="w-5 h-5 text-accent" />
@@ -223,7 +223,7 @@ export function Settings() {
         </div>
 
         {/* Change Password Card */}
-        <div className="bg-background-secondary border border-border rounded-xl p-6">
+        <div className="rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg bg-status-paused/10 flex items-center justify-center">
               <Lock className="w-5 h-5 text-status-paused" />
@@ -315,7 +315,7 @@ export function Settings() {
       </div>
 
       {/* App Info */}
-      <div className="bg-background-secondary border border-border rounded-xl p-6">
+      <div className="rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg bg-background-tertiary flex items-center justify-center">
             <SettingsIcon className="w-5 h-5 text-text-muted" />
@@ -326,15 +326,15 @@ export function Settings() {
           </div>
         </div>
         <div className="grid gap-3 text-sm">
-          <div className="flex justify-between py-2 border-b border-border">
+          <div className="flex flex-col gap-1 border-b border-border py-2 sm:flex-row sm:justify-between">
             <span className="text-text-muted">Phiên bản</span>
             <span className="text-text-primary font-medium">{__APP_VERSION__}</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-border">
+          <div className="flex flex-col gap-1 border-b border-border py-2 sm:flex-row sm:justify-between">
             <span className="text-text-muted">Người dùng hiện tại</span>
             <span className="text-text-primary font-medium">{user?.username || "N/A"}</span>
           </div>
-          <div className="flex justify-between py-2">
+          <div className="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between">
             <span className="text-text-muted">GitHub</span>
             <a 
               href="https://github.com" 
@@ -349,8 +349,8 @@ export function Settings() {
       </div>
 
       {/* Traefik (local) */}
-      <div className="bg-background-secondary border border-border rounded-xl p-6 space-y-4">
-        <div className="flex items-start justify-between gap-4">
+      <div className="space-y-4 rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">Traefik (local)</h2>
             <p className="text-sm text-text-secondary mt-1">
@@ -409,8 +409,9 @@ export function Settings() {
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex sm:justify-end">
           <Button
+            className="w-full sm:w-auto"
             onClick={async () => {
               try {
                 setTraefikApplyOutput("");
@@ -441,7 +442,7 @@ export function Settings() {
         </div>
 
         <div className="border border-border rounded-lg bg-background p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium text-text-primary">Apply output</p>
             <p className="text-xs text-text-muted">
               {traefikStatus?.config?.lastAppliedAt
@@ -460,7 +461,7 @@ export function Settings() {
         </div>
 
         <div className="border border-border rounded-lg bg-background p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-text-primary">Logs</p>
             <p className="text-xs text-text-muted">tail 200</p>
           </div>

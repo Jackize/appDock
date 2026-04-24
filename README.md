@@ -295,6 +295,15 @@ make install
 make dev
 ```
 
+Or run the same development stack in Docker:
+
+```bash
+make dev-docker
+
+# Follow logs
+docker compose -f docker-compose.dev.yml logs -f
+```
+
 Or run separately:
 
 ```bash

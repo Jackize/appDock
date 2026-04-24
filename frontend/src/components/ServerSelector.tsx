@@ -63,10 +63,10 @@ export function ServerSelector() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border hover:border-accent/50 transition-colors"
+        className="flex items-center gap-2 rounded-lg border border-border bg-background-tertiary px-2 py-1.5 transition-colors hover:border-accent/50 sm:px-3"
       >
         <Server className="w-4 h-4 text-accent" />
-        <span className="text-sm text-text-primary font-medium max-w-[120px] truncate">
+        <span className="hidden max-w-[120px] truncate text-sm font-medium text-text-primary sm:block">
           {currentServer?.name || 'Local'}
         </span>
         <div className={cn(
@@ -80,7 +80,7 @@ export function ServerSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 py-1 rounded-lg bg-background-secondary border border-border shadow-lg z-50">
+        <div className="absolute right-0 z-50 mt-2 w-64 max-w-[calc(100vw-1.5rem)] rounded-lg border border-border bg-background-secondary py-1 shadow-lg">
           <div className="px-3 py-2 border-b border-border">
             <p className="text-xs font-medium text-text-muted uppercase tracking-wide">
               Chọn Server

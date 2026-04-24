@@ -155,9 +155,9 @@ export default function Servers() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary flex items-center gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-3 text-2xl font-bold text-text-primary">
             <Server className="w-7 h-7 text-accent" />
             Quản lý Server
           </h1>
@@ -165,17 +165,17 @@ export default function Servers() {
             Quản lý các server từ xa và kết nối agent
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
           <button
             onClick={() => refetch()}
-            className="btn-secondary flex items-center gap-2"
+            className="btn-secondary flex items-center justify-center gap-2"
           >
             <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
             Làm mới
           </button>
           <button
             onClick={handleOpenAdd}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Thêm Server
@@ -195,11 +195,11 @@ export default function Servers() {
                 : "border-border hover:border-border-hover"
             )}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
                 <div
                   className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center",
+                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
                     server.isLocal
                       ? "bg-accent/10"
                       : server.status === "online"
@@ -220,9 +220,9 @@ export default function Servers() {
                     />
                   )}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-text-primary">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="max-w-full truncate text-lg font-semibold text-text-primary">
                       {server.name}
                     </h3>
                     {getStatusBadge(server.status, server.isLocal)}
@@ -239,11 +239,11 @@ export default function Servers() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 {server.id !== currentServerId && (
                   <button
                     onClick={() => handleSelectServer(server.id)}
-                    className="btn-secondary text-sm px-3 py-1.5"
+                    className="btn-secondary inline-flex items-center text-sm px-3 py-1.5"
                   >
                     <ExternalLink className="w-4 h-4 mr-1.5" />
                     Chọn
@@ -311,8 +311,8 @@ export default function Servers() {
 
       {/* Add Server Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background-secondary rounded-xl border border-border w-full max-w-md mx-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-background-secondary shadow-xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold text-text-primary">
                 Thêm Server mới
@@ -325,7 +325,7 @@ export default function Servers() {
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleCreate} className="space-y-4 p-4 sm:p-6">
               {formError && (
                 <div className="p-3 rounded-lg bg-status-stopped/10 border border-status-stopped/20 text-sm text-status-stopped">
                   {formError}
@@ -386,7 +386,7 @@ export default function Servers() {
                 </p>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -419,8 +419,8 @@ export default function Servers() {
 
       {/* Edit Server Modal */}
       {showEditModal && editingServer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background-secondary rounded-xl border border-border w-full max-w-md mx-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-background-secondary shadow-xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold text-text-primary">
                 Chỉnh sửa Server
@@ -433,7 +433,7 @@ export default function Servers() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdate} className="p-6 space-y-4">
+            <form onSubmit={handleUpdate} className="space-y-4 p-4 sm:p-6">
               {formError && (
                 <div className="p-3 rounded-lg bg-status-stopped/10 border border-status-stopped/20 text-sm text-status-stopped">
                   {formError}
@@ -485,7 +485,7 @@ export default function Servers() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}

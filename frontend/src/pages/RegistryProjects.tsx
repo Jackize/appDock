@@ -118,7 +118,7 @@ export function RegistryProjects() {
             trong file data trên server — chỉ dùng trong môi trường tin cậy.
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button className="w-full sm:w-auto" onClick={openCreate}>
           <Plus className="w-4 h-4" />
           Thêm registry project
         </Button>
@@ -276,7 +276,7 @@ export function RegistryProjects() {
                   placeholder={editing ? "Để trống nếu giữ nguyên" : ""}
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button type="button" variant="secondary" onClick={closeModal}>
                   Hủy
                 </Button>

@@ -88,7 +88,7 @@ func (s *ServerStore) List() []*models.Server {
 
 	servers := make([]*models.Server, 0, len(s.servers))
 	for _, server := range s.servers {
-		servers = append(servers, server)
+		servers = append(servers, cloneServer(server))
 	}
 
 	return servers
@@ -103,7 +103,7 @@ func (s *ServerStore) Get(id string) (*models.Server, error) {
 		return nil, ErrServerNotFound
 	}
 
-	return server, nil
+	return cloneServer(server), nil
 }
 
 func (s *ServerStore) Create(name, host, apiKey string) (*models.Server, error) {
@@ -118,7 +118,7 @@ func (s *ServerStore) Create(name, host, apiKey string) (*models.Server, error) 
 		return nil, err
 	}
 
-	return server, nil
+	return cloneServer(server), nil
 }
 
 func (s *ServerStore) Update(id string, req models.UpdateServerRequest) (*models.Server, error) {
@@ -155,7 +155,7 @@ func (s *ServerStore) Update(id string, req models.UpdateServerRequest) (*models
 		return nil, err
 	}
 
-	return server, nil
+	return cloneServer(server), nil
 }
 
 func (s *ServerStore) Delete(id string) error {
@@ -186,8 +186,32 @@ func (s *ServerStore) UpdateStatus(id string, status models.ServerStatus) {
 	defer s.mu.Unlock()
 
 	if server, exists := s.servers[id]; exists {
+		if server.Status == status {
+			return
+		}
 		server.Status = status
 		server.UpdatedAt = time.Now()
+		s.save()
+	}
+}
+
+func (s *ServerStore) UpdateStatuses(statuses map[string]models.ServerStatus) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	changed := false
+	for id, status := range statuses {
+		server, exists := s.servers[id]
+		if !exists || server.Status == status {
+			continue
+		}
+		server.Status = status
+		server.UpdatedAt = now
+		changed = true
+	}
+
+	if changed {
 		s.save()
 	}
 }
@@ -198,10 +222,18 @@ func (s *ServerStore) GetDefault() *models.Server {
 
 	for _, server := range s.servers {
 		if server.IsDefault {
-			return server
+			return cloneServer(server)
 		}
 	}
 
 	// Fallback to local
-	return s.servers["local"]
+	return cloneServer(s.servers["local"])
+}
+
+func cloneServer(server *models.Server) *models.Server {
+	if server == nil {
+		return nil
+	}
+	copy := *server
+	return &copy
 }

@@ -72,7 +72,7 @@ export function Members() {
         </p>
       </div>
 
-      <div className="bg-background-secondary border border-border rounded-xl p-6">
+      <div className="rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
             <Users className="w-5 h-5 text-accent" />
@@ -98,6 +98,7 @@ export function Members() {
             onClick={onInvite}
             loading={createInvite.isPending}
             disabled={!email.trim()}
+            className="w-full md:w-auto"
           >
             Mời
           </Button>
@@ -105,6 +106,7 @@ export function Members() {
             variant="secondary"
             onClick={() => invitesQuery.refetch()}
             loading={invitesQuery.isFetching}
+            className="w-full md:w-auto"
           >
             <RefreshCcw className="w-4 h-4" />
             Refresh
@@ -112,8 +114,8 @@ export function Members() {
         </div>
       </div>
 
-      <div className="bg-background-secondary border border-border rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">Danh sách invites</h2>
             <p className="text-sm text-text-muted">
@@ -127,8 +129,8 @@ export function Members() {
             {(invitesQuery.error as Error)?.message || "Không thể tải danh sách invites"}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="-mx-4 overflow-x-auto border-y border-border sm:mx-0 sm:rounded-lg sm:border">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="text-left text-text-muted border-b border-border">
                   <th className="py-3 pr-3">Email</th>
@@ -219,4 +221,3 @@ export function Members() {
     </div>
   );
 }
-
