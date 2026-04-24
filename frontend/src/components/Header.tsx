@@ -1,4 +1,4 @@
-import { Bell, RefreshCw, User, LogOut, ChevronDown, Key, X, Loader2, Lock, Cpu, MemoryStick, HardDrive, Thermometer, AlertTriangle } from 'lucide-react'
+import { Bell, RefreshCw, User, LogOut, ChevronDown, Key, X, Loader2, Lock, Cpu, MemoryStick, HardDrive, Thermometer, AlertTriangle, Menu } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/appStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -10,7 +10,7 @@ import { ServerSelector } from './ServerSelector'
 
 export function Header() {
   const queryClient = useQueryClient()
-  const { addToast } = useAppStore()
+  const { addToast, setSidebarOpen } = useAppStore()
   const { user, authEnabled, logout } = useAuthStore()
   const { data: dockerStatus } = useDockerStatus()
   const { data: systemInfoResponse } = useSystemInfo()
@@ -108,65 +108,69 @@ export function Header() {
   }
 
   return (
-    <header className="h-16 bg-background-secondary border-b border-border flex items-center px-6">
-      {/* Left spacer */}
-      <div className="flex-1" />
+    <header className="border-b border-border bg-background-secondary px-3 py-3 sm:px-4 lg:h-16 lg:px-6 lg:py-0">
+      <div className="flex w-full flex-wrap items-center gap-3 lg:h-full">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-background-hover hover:text-accent lg:hidden"
+          aria-label="Mở menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
 
-      {/* Center - Real-time stats */}
-      {stats && (
-        <div className="flex items-center gap-6">
-          {/* CPU Usage */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
-            <Cpu className="w-4 h-4 text-accent" />
-            <span className={cn('text-sm font-medium', getUsageColor(stats.cpuUsage))}>
-              {stats.cpuUsage.toFixed(1)}%
-            </span>
+        {/* Real-time stats */}
+        {stats && (
+          <div className="order-3 grid w-full grid-cols-2 gap-2 sm:order-none sm:w-auto sm:flex sm:flex-1 sm:items-center sm:justify-center sm:gap-3">
+            {/* CPU Usage */}
+            <div className="flex min-w-0 items-center justify-center gap-2 rounded-lg border border-border bg-background-tertiary px-2 py-1.5 sm:px-3">
+              <Cpu className="h-4 w-4 shrink-0 text-accent" />
+              <span className={cn('truncate text-sm font-medium', getUsageColor(stats.cpuUsage))}>
+                {stats.cpuUsage.toFixed(1)}%
+              </span>
+            </div>
+
+            {/* RAM Usage */}
+            <div className="flex min-w-0 items-center justify-center gap-2 rounded-lg border border-border bg-background-tertiary px-2 py-1.5 sm:px-3">
+              <MemoryStick className="h-4 w-4 shrink-0 text-teal-500" />
+              <span className={cn('truncate text-sm font-medium', getUsageColor(stats.memoryUsage))}>
+                {stats.memoryUsage.toFixed(1)}%
+              </span>
+            </div>
+
+            {/* Disk Usage */}
+            <div className="flex min-w-0 items-center justify-center gap-2 rounded-lg border border-border bg-background-tertiary px-2 py-1.5 sm:px-3">
+              <HardDrive className="h-4 w-4 shrink-0 text-purple-500" />
+              <span className={cn('truncate text-sm font-medium', getUsageColor(stats.diskUsage))}>
+                {stats.diskUsage.toFixed(1)}%
+              </span>
+            </div>
+
+            {/* CPU Temperature */}
+            <div className="flex min-w-0 items-center justify-center gap-2 rounded-lg border border-border bg-background-tertiary px-2 py-1.5 sm:px-3">
+              <Thermometer className="h-4 w-4 shrink-0 text-orange-500" />
+              <span className={cn('truncate text-sm font-medium', stats.cpuTemperature != null ? getTempColor(stats.cpuTemperature) : 'text-text-muted')}>
+                {stats.cpuTemperature != null ? `${stats.cpuTemperature.toFixed(1)}°C` : 'N/A'}
+              </span>
+            </div>
           </div>
+        )}
 
-          {/* RAM Usage */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
-            <MemoryStick className="w-4 h-4 text-teal-500" />
-            <span className={cn('text-sm font-medium', getUsageColor(stats.memoryUsage))}>
-              {stats.memoryUsage.toFixed(1)}%
-            </span>
-          </div>
-
-          {/* Disk Usage */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
-            <HardDrive className="w-4 h-4 text-purple-500" />
-            <span className={cn('text-sm font-medium', getUsageColor(stats.diskUsage))}>
-              {stats.diskUsage.toFixed(1)}%
-            </span>
-          </div>
-
-          {/* CPU Temperature */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
-            <Thermometer className="w-4 h-4 text-orange-500" />
-            <span className={cn('text-sm font-medium', stats.cpuTemperature != null ? getTempColor(stats.cpuTemperature) : 'text-text-muted')}>
-              {stats.cpuTemperature != null ? `${stats.cpuTemperature.toFixed(1)}°C` : 'N/A'}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Right spacer */}
-      <div className="flex-1" />
-
-      {/* Right side */}
-      <div className="flex items-center gap-4">
+        {/* Right side */}
+        <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2 lg:gap-4">
         {/* Server selector */}
         <ServerSelector />
 
         {/* Docker status */}
         {dockerAvailable ? (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
+          <div className="hidden items-center gap-2 rounded-lg border border-border bg-background-tertiary px-3 py-1.5 md:flex">
             <div className="w-2 h-2 rounded-full bg-status-running animate-pulse" />
             <span className="text-sm text-text-secondary">
               Docker {systemInfo?.dockerVersion || 'N/A'}
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-status-stopped/10 border border-status-stopped/30">
+          <div className="hidden items-center gap-2 rounded-lg border border-status-stopped/30 bg-status-stopped/10 px-3 py-1.5 md:flex">
             <AlertTriangle className="w-4 h-4 text-status-stopped" />
             <span className="text-sm text-status-stopped font-medium">
               Docker Offline
@@ -204,7 +208,7 @@ export function Header() {
               <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center">
                 <User className="w-4 h-4 text-accent" />
               </div>
-              <span className="text-sm text-text-primary font-medium">
+              <span className="hidden max-w-[8rem] truncate text-sm font-medium text-text-primary sm:inline">
                 {user.username}
               </span>
               <ChevronDown className={cn(
@@ -238,12 +242,13 @@ export function Header() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Change Password Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background-secondary rounded-xl border border-border w-full max-w-md mx-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-background-secondary shadow-xl">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold text-text-primary">Đổi mật khẩu</h2>
@@ -256,7 +261,7 @@ export function Header() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+            <form onSubmit={handleChangePassword} className="space-y-4 p-4 sm:p-6">
               {passwordError && (
                 <div className="p-3 rounded-lg bg-status-stopped/10 border border-status-stopped/20 text-sm text-status-stopped">
                   {passwordError}
@@ -315,7 +320,7 @@ export function Header() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setShowPasswordModal(false)}
@@ -345,5 +350,3 @@ export function Header() {
     </header>
   )
 }
-
-

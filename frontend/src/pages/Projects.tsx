@@ -285,7 +285,7 @@ services:
             chạy AppDock).
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button className="w-full sm:w-auto" onClick={openCreate}>
           <Plus className="w-4 h-4" />
           Tạo project
         </Button>
@@ -315,7 +315,7 @@ services:
               className="border-border bg-background-secondary/50"
             >
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-start justify-between gap-2">
+                <CardTitle className="flex items-start justify-between gap-2 text-lg">
                   <span className="truncate">{p.name}</span>
                   <div className="flex gap-1 shrink-0">
                     <Button
@@ -353,11 +353,13 @@ services:
                   </span>
                 </div>
                 {p.registryProjectId ? (
-                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                  <div className="flex min-w-0 items-center gap-2 text-xs text-text-muted">
                     <Package className="w-3.5 h-3.5" />
-                    Registry:{" "}
-                    {registryProjects?.find((r) => r.id === p.registryProjectId)
-                      ?.name ?? p.registryProjectId}
+                    <span className="truncate">
+                      Registry:{" "}
+                      {registryProjects?.find((r) => r.id === p.registryProjectId)
+                        ?.name ?? p.registryProjectId}
+                    </span>
                   </div>
                 ) : null}
                 {p.composeProjectNames?.length ? (
@@ -412,14 +414,15 @@ services:
       {expandedComposePid && sorted.length > 0 ? (
         <Card className="border-border">
           <CardHeader>
-            <CardTitle className="text-base flex flex-wrap items-center justify-between gap-2">
-              <span>
+            <CardTitle className="flex flex-col gap-2 text-base sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <span className="min-w-0 truncate">
                 Compose stacks —{" "}
                 {sorted.find((x) => x.id === expandedComposePid)?.name}
               </span>
               <Button
                 type="button"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => openStackCreate(expandedComposePid)}
                 disabled={
                   (projects?.find((x) => x.id === expandedComposePid)
@@ -431,14 +434,14 @@ services:
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent className="-mx-4 overflow-x-auto border-y border-border sm:mx-0 sm:rounded-lg sm:border">
             {!stacks?.length ? (
               <p className="text-sm text-text-muted py-4">
                 Chưa có stack. Thêm file compose và bấm Deploy (cần{" "}
                 <span className="font-mono">docker compose</span> trên server).
               </p>
             ) : (
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[620px] text-sm">
                 <thead>
                   <tr className="text-left text-text-muted border-b border-border">
                     <th className="pb-2 pr-4">Tên</th>
@@ -623,7 +626,7 @@ services:
                   Khớp nhãn Docker Compose project trên container.
                 </p>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                 <Button type="button" variant="secondary" onClick={closeModal}>
                   Hủy
                 </Button>
@@ -709,7 +712,7 @@ services:
                   placeholder="KEY=value"
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
                   variant="secondary"

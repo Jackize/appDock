@@ -510,30 +510,30 @@ export function Dashboard() {
               {containers.slice(0, 5).map((container) => (
                 <div
                   key={container.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-background-tertiary hover:bg-background-hover transition-colors"
+                  className="flex flex-col gap-3 rounded-lg bg-background-tertiary p-3 transition-colors hover:bg-background-hover sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div
-                      className={`w-3 h-3 rounded-full ${
+                      className={`h-3 w-3 shrink-0 rounded-full ${
                         container.state === "running"
                           ? "bg-status-running animate-pulse"
                           : "bg-status-stopped"
                       }`}
                     />
-                    <div>
-                      <p className="font-medium text-text-primary">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-text-primary">
                         {container.name}
                       </p>
-                      <p className="text-xs text-text-muted">
+                      <p className="truncate text-xs text-text-muted">
                         {container.image}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="min-w-0 text-left sm:text-right">
                     <p className="text-sm text-text-secondary">
                       {container.state === "running" ? "Running" : "Stopped"}
                     </p>
-                    <p className="text-xs text-text-muted font-mono">
+                    <p className="truncate font-mono text-xs text-text-muted">
                       {container.id}
                     </p>
                   </div>
@@ -555,7 +555,7 @@ export function Dashboard() {
             <CardTitle>Thông tin hệ thống</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
               <div className="p-3 rounded-lg bg-background-tertiary">
                 <p className="text-sm text-text-secondary">Bộ nhớ RAM</p>
                 <p className="text-lg font-semibold text-text-primary">

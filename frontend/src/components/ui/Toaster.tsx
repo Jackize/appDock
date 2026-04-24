@@ -28,7 +28,7 @@ export function Toaster() {
   const { toasts, removeToast } = useAppStore()
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed inset-x-3 bottom-3 z-50 flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
@@ -59,7 +59,7 @@ function Toast({ title, description, variant = 'default', onClose }: ToastProps)
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-lg border shadow-lg min-w-[320px] max-w-md animate-slide-up',
+        'flex w-full items-start gap-3 rounded-lg border p-4 shadow-lg animate-slide-up sm:min-w-[320px] sm:max-w-md',
         variantStyles[variant]
       )}
     >
@@ -79,5 +79,4 @@ function Toast({ title, description, variant = 'default', onClose }: ToastProps)
     </div>
   )
 }
-
 

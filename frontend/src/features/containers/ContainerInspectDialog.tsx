@@ -32,9 +32,9 @@ export function ContainerInspectDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background-secondary border border-border rounded-xl p-6 w-[95vw] max-w-4xl z-50 max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100vw-2rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background-secondary p-4 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold text-text-primary">
                 Inspect container
               </Dialog.Title>
@@ -44,7 +44,7 @@ export function ContainerInspectDialog({
                     <span className="font-medium text-text-primary">
                       {container.name}
                     </span>{" "}
-                    <span className="text-text-muted font-mono text-xs">
+                    <span className="break-all font-mono text-xs text-text-muted">
                       ({container.id})
                     </span>
                   </>
@@ -53,7 +53,7 @@ export function ContainerInspectDialog({
                 )}
               </Dialog.Description>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Button
                 variant="secondary"
                 size="sm"

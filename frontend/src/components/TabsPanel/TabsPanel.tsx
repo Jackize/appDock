@@ -11,6 +11,7 @@ export function TabsPanel() {
     activeTabId,
     tabsPanelOpen,
     tabsPanelHeight,
+    sidebarOpen,
     closeTab,
     setActiveTab,
     toggleTabsPanel,
@@ -63,11 +64,13 @@ export function TabsPanel() {
     <div
       ref={panelRef}
       className={cn(
-        "fixed bottom-0 left-0 right-0 border-t border-border shadow-2xl z-40 transition-all duration-200",
+        "fixed bottom-0 left-0 right-0 z-40 border-t border-border shadow-2xl transition-all duration-200",
+        sidebarOpen ? "lg:left-64" : "lg:left-20",
         tabsPanelOpen ? "" : "translate-y-[calc(100%-40px)]",
       )}
       style={{
         height: tabsPanelHeight,
+        maxHeight: "70dvh",
         backgroundColor: "var(--color-background-card, #1f2937)",
         opacity: 1,
       }}
@@ -87,7 +90,7 @@ export function TabsPanel() {
         style={{ backgroundColor: "#0f1117" }}
       >
         {/* Tabs */}
-        <div className="flex items-center gap-0.5 flex-1 scrollbar-hide bg-opacity-100">
+        <div className="scrollbar-hide flex flex-1 items-center gap-0.5 overflow-x-auto bg-opacity-100">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -128,7 +131,7 @@ export function TabsPanel() {
         </div>
 
         {/* Panel controls */}
-        <div className="flex items-center gap-1 ml-2">
+        <div className="ml-2 flex shrink-0 items-center gap-1">
           <button
             onClick={toggleTabsPanel}
             className="p-1.5 rounded hover:bg-background-hover text-text-muted hover:text-text-primary transition-colors"

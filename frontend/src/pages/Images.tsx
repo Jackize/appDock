@@ -145,7 +145,7 @@ export function Images() {
           </div>
         }
         actions={
-          <Button onClick={() => setPullDialogOpen(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setPullDialogOpen(true)}>
             <Download className="w-4 h-4" />
             Pull Image
           </Button>
@@ -288,11 +288,11 @@ function UnusedImagesActions({
 }) {
   if (selectedCount > 0) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <span className="text-sm text-text-secondary">
           Đã chọn {selectedCount} images ({formatBytes(selectedTotalSize)})
         </span>
-        <Button variant="danger" size="sm" onClick={onBulkDelete}>
+        <Button className="w-full sm:w-auto" variant="danger" size="sm" onClick={onBulkDelete}>
           <Trash2 className="w-4 h-4" />
           Xóa đã chọn
         </Button>

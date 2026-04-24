@@ -20,16 +20,16 @@ export function ResourceSection({
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {icon}
-            <div>
+            <div className="min-w-0">
               <CardTitle>{title}</CardTitle>
               {description && (
                 <p className="text-sm text-text-muted">{description}</p>
               )}
             </div>
           </div>
-          {actions}
+          {actions && <div className="w-full sm:w-auto">{actions}</div>}
         </div>
       </CardHeader>
       <CardContent>{children}</CardContent>

@@ -42,11 +42,11 @@ export function ContainerGroupCard({
         <button type="button" onClick={onToggle} className="w-full text-left">
           <CardHeader className="cursor-pointer hover:bg-background-hover/50 transition-colors rounded-t-xl">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 {icon}
-                <div>
+                <div className="min-w-0">
                   <CardTitle className="flex flex-wrap items-center gap-2">
-                    {title}
+                    <span className="truncate">{title}</span>
                     <Badge variant="outline">{countLabel}</Badge>
                   </CardTitle>
                   <p className="text-sm text-text-muted mt-0.5">{description}</p>
