@@ -15,6 +15,15 @@ import type {
   Project,
   CreateProjectRequest,
   UpdateProjectRequest,
+  Environment,
+  CreateEnvironmentRequest,
+  Resource,
+  ResourceConfig,
+  CreateResourceRequest,
+  UpdateResourceRequest,
+  CatalogApp,
+  ProjectMember,
+  CreateProjectInviteRequest,
   RegistryProject,
   CreateRegistryProjectRequest,
   UpdateRegistryProjectRequest,
@@ -363,6 +372,74 @@ export const projectsAPI = {
 
   remove: (id: string) =>
     fetchAPI<{ message: string }>(`/projects/${id}`, { method: "DELETE" }),
+
+  environments: (projectId: string) =>
+    fetchAPI<Environment[]>(`/projects/${projectId}/environments`),
+
+  createEnvironment: (projectId: string, data: CreateEnvironmentRequest) =>
+    fetchAPI<Environment>(`/projects/${projectId}/environments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  removeEnvironment: (environmentId: string, force = false) =>
+    fetchAPI<{ message: string; removedResources: number }>(
+      `/environments/${environmentId}?force=${force}`,
+      { method: "DELETE" },
+    ),
+
+  members: (projectId: string) =>
+    fetchAPI<ProjectMember[]>(`/projects/${projectId}/members`),
+
+  invite: (projectId: string, data: CreateProjectInviteRequest) =>
+    fetchAPI<{ invite: unknown; inviteLink: string; emailError?: string }>(
+      `/projects/${projectId}/invites`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+};
+
+// ==================== ENVIRONMENT RESOURCES ====================
+
+export const resourcesAPI = {
+  list: (environmentId: string) =>
+    fetchAPI<Resource[]>(`/environments/${environmentId}/resources`),
+
+  get: (id: string) => fetchAPI<Resource>(`/resources/${id}`),
+
+  config: (id: string) => fetchAPI<ResourceConfig>(`/resources/${id}/config`),
+
+  create: (environmentId: string, data: CreateResourceRequest) =>
+    fetchAPI<Resource>(`/environments/${environmentId}/resources`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateResourceRequest) =>
+    fetchAPI<Resource>(`/resources/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchAPI<{ message: string }>(`/resources/${id}`, { method: "DELETE" }),
+
+  deploy: (id: string) =>
+    fetchAPI<{ message: string; output?: string; resource?: Resource }>(
+      `/resources/${id}/deploy`,
+      { method: "POST" },
+    ),
+
+  undeploy: (id: string) =>
+    fetchAPI<{ message: string; output?: string; resource?: Resource }>(
+      `/resources/${id}/undeploy`,
+      { method: "POST" },
+    ),
+};
+
+// ==================== CATALOG ====================
+
+export const catalogAPI = {
+  list: () => fetchAPI<CatalogApp[]>("/catalog/apps"),
 };
 
 // ==================== REGISTRY PROJECTS ====================

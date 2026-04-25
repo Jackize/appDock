@@ -12,6 +12,7 @@ import Servers from "./pages/Servers";
 import { Settings } from "./pages/Settings";
 import { AuthCallback } from "./pages/AuthCallback";
 import { Projects } from "./pages/Projects";
+import { ProjectEnvironment } from "./pages/ProjectEnvironment";
 import { RegistryProjects } from "./pages/RegistryProjects";
 import { Volumes } from "./pages/Volumes";
 import { Members } from "./pages/Members";
@@ -126,6 +127,8 @@ function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/containers" element={<Containers />} />
                   <Route path="/projects" element={<Projects />} />
+                  <Route path="/projects/:projectId" element={<ProjectEnvironment />} />
+                  <Route path="/projects/:projectId/environments/:environmentId" element={<ProjectEnvironment />} />
                   <Route path="/registry-projects" element={<RegistryProjects />} />
                   <Route path="/images" element={<Images />} />
                   <Route path="/networks" element={<Networks />} />

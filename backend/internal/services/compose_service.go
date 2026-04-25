@@ -78,10 +78,29 @@ func (c *ComposeService) runCompose(ctx context.Context, composeProjectName, sta
 	return cmd.CombinedOutput()
 }
 
+func (c *ComposeService) runComposeDir(ctx context.Context, composeProjectName, dir string, args ...string) ([]byte, error) {
+	full := append([]string{
+		"compose",
+		"-p", composeProjectName,
+		"-f", "docker-compose.yml",
+		"--project-directory", dir,
+	}, args...)
+	cmd := exec.CommandContext(ctx, "docker", full...)
+	cmd.Dir = dir
+	return cmd.CombinedOutput()
+}
+
 func (c *ComposeService) Deploy(ctx context.Context, composeProjectName, stackID string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 	out, err := c.runCompose(ctx, composeProjectName, stackID, "up", "-d")
+	return string(out), err
+}
+
+func (c *ComposeService) DeployDir(ctx context.Context, composeProjectName, dir string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
+	defer cancel()
+	out, err := c.runComposeDir(ctx, composeProjectName, dir, "up", "-d")
 	return string(out), err
 }
 
@@ -90,6 +109,69 @@ func (c *ComposeService) Undeploy(ctx context.Context, composeProjectName, stack
 	defer cancel()
 	out, err := c.runCompose(ctx, composeProjectName, stackID, "down", "--remove-orphans")
 	return string(out), err
+}
+
+func (c *ComposeService) UndeployDir(ctx context.Context, composeProjectName, dir string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+	defer cancel()
+	out, err := c.runComposeDir(ctx, composeProjectName, dir, "down", "--remove-orphans")
+	return string(out), err
+}
+
+func (c *ComposeService) WriteResourceFiles(dir, composeYAML, envContent string) error {
+	if strings.TrimSpace(composeYAML) == "" {
+		return ErrComposeYAMLMissing
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	composePath := filepath.Join(dir, "docker-compose.yml")
+	if err := os.WriteFile(composePath, []byte(composeYAML), 0644); err != nil {
+		return err
+	}
+	envPath := filepath.Join(dir, ".env")
+	if strings.TrimSpace(envContent) != "" {
+		if err := os.WriteFile(envPath, []byte(envContent), 0600); err != nil {
+			return err
+		}
+	} else {
+		_ = os.Remove(envPath)
+	}
+	return nil
+}
+
+func (c *ComposeService) EnsureNetwork(ctx context.Context, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", errors.New("network name is required")
+	}
+	cmd := exec.CommandContext(ctx, "docker", "network", "create", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s := string(out)
+		if strings.Contains(s, "already exists") {
+			return s, nil
+		}
+		return s, fmt.Errorf("docker network create %s: %w: %s", name, err, strings.TrimSpace(s))
+	}
+	return string(out), nil
+}
+
+func (c *ComposeService) RemoveNetwork(ctx context.Context, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", errors.New("network name is required")
+	}
+	cmd := exec.CommandContext(ctx, "docker", "network", "rm", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s := string(out)
+		if strings.Contains(s, "No such network") || strings.Contains(s, "not found") {
+			return s, nil
+		}
+		return s, fmt.Errorf("docker network rm %s: %w: %s", name, err, strings.TrimSpace(s))
+	}
+	return string(out), nil
 }
 
 func (c *ComposeService) RemoveWorkDir(stackID string) error {

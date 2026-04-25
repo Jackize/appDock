@@ -28,6 +28,19 @@ export const queryKeys = {
   },
   projects: {
     all: ["projects"] as const,
+    detail: (id: string) => ["projects", id] as const,
+    environments: (projectId: string) => ["projects", projectId, "environments"] as const,
+    members: (projectId: string) => ["projects", projectId, "members"] as const,
+  },
+  resources: {
+    all: ["resources"] as const,
+    list: (environmentId: string) => ["resources", environmentId] as const,
+    detail: (id: string) => ["resources", id] as const,
+    config: (id: string) => ["resources", id, "config"] as const,
+  },
+  catalog: {
+    all: ["catalog"] as const,
+    apps: ["catalog", "apps"] as const,
   },
   registryProjects: {
     all: ["registry-projects"] as const,
