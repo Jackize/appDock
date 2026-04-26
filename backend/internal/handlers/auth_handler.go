@@ -21,15 +21,21 @@ import (
 
 // AuthHandler xử lý các request liên quan đến authentication
 type AuthHandler struct {
-	authService *services.AuthService
-	inviteStore *services.InviteStore
+	authService   *services.AuthService
+	inviteStore   *services.InviteStore
+	projectAccess *services.ProjectAccessStore
 }
 
 // NewAuthHandler tạo AuthHandler mới
-func NewAuthHandler(authService *services.AuthService, inviteStore *services.InviteStore) *AuthHandler {
+func NewAuthHandler(authService *services.AuthService, inviteStore *services.InviteStore, projectAccess ...*services.ProjectAccessStore) *AuthHandler {
+	var access *services.ProjectAccessStore
+	if len(projectAccess) > 0 {
+		access = projectAccess[0]
+	}
 	return &AuthHandler{
-		authService: authService,
-		inviteStore: inviteStore,
+		authService:   authService,
+		inviteStore:   inviteStore,
+		projectAccess: access,
 	}
 }
 
@@ -339,7 +345,9 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	// Invite-only gate
-	if h.inviteStore == nil || !h.inviteStore.IsEmailAllowed(email) {
+	allowedByGlobalInvite := h.inviteStore != nil && h.inviteStore.IsEmailAllowed(email)
+	allowedByProjectInvite := h.projectAccess != nil && h.projectAccess.IsEmailProjectMember(email)
+	if !allowedByGlobalInvite && !allowedByProjectInvite {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Email chưa được mời"})
 		return
 	}

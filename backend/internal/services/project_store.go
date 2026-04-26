@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,8 +52,10 @@ func (s *ProjectStore) load() error {
 
 	s.projects = make(map[string]*models.Project)
 	for _, p := range list {
+		s.ensureProjectDefaults(p)
 		s.projects[p.ID] = p
 	}
+	_ = s.save()
 	return nil
 }
 
@@ -89,11 +92,20 @@ func (s *ProjectStore) Get(id string) (*models.Project, error) {
 }
 
 func (s *ProjectStore) Create(req models.CreateProjectRequest) (*models.Project, error) {
+	return s.CreateForOwner(req, "admin", "")
+}
+
+func (s *ProjectStore) CreateForOwner(req models.CreateProjectRequest, owner, ownerEmail string) (*models.Project, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	names := normalizeComposeNames(req.ComposeProjectNames)
-	p := models.NewProject(req.Name, req.Description, req.ServerID, names)
+	if owner == "" {
+		owner = "admin"
+	}
+	slug := Slugify(req.Name)
+	ownerSlug := Slugify(owner)
+	p := models.NewProject(req.Name, req.Description, req.ServerID, names, owner, ownerEmail, slug, ownerSlug)
 	p.RegistryProjectID = req.RegistryProjectID
 	s.projects[p.ID] = p
 	if err := s.save(); err != nil {
@@ -157,4 +169,19 @@ func normalizeComposeNames(in []string) []string {
 		out = append(out, n)
 	}
 	return out
+}
+
+func (s *ProjectStore) ensureProjectDefaults(p *models.Project) {
+	if p.Slug == "" {
+		p.Slug = Slugify(p.Name)
+	}
+	if strings.TrimSpace(p.Owner) == "" {
+		p.Owner = "admin"
+	}
+	if p.OwnerSlug == "" {
+		p.OwnerSlug = Slugify(p.Owner)
+	}
+	if p.ServerID == "" {
+		p.ServerID = "local"
+	}
 }

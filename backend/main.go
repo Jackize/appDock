@@ -66,6 +66,10 @@ func main() {
 	if err != nil {
 		log.Printf("⚠️  Warning: Could not initialize invite store: %v", err)
 	}
+	projectAccessStore, projectAccessErr := services.NewProjectAccessStore(dataDir)
+	if projectAccessErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize project access store: %v", projectAccessErr)
+	}
 	emailService, emailErr := services.NewEmailService()
 	if emailErr != nil {
 		log.Printf("📨 Email service disabled: %v", emailErr)
@@ -75,6 +79,14 @@ func main() {
 	projectStore, projectStoreErr := services.NewProjectStore(dataDir)
 	if projectStoreErr != nil {
 		log.Printf("⚠️  Warning: Could not initialize project store: %v", projectStoreErr)
+	}
+	workspaceService, workspaceErr := services.NewWorkspaceService(dataDir)
+	if workspaceErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize workspace service: %v", workspaceErr)
+	}
+	environmentStore, environmentStoreErr := services.NewEnvironmentStore(dataDir)
+	if environmentStoreErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize environment store: %v", environmentStoreErr)
 	}
 
 	traefikStore, traefikStoreErr := services.NewTraefikStore(dataDir)
@@ -98,6 +110,22 @@ func main() {
 	if composeServiceErr != nil {
 		log.Printf("⚠️  Warning: Could not initialize compose service: %v", composeServiceErr)
 	}
+	resourceStore, resourceStoreErr := services.NewResourceStore(dataDir)
+	if resourceStoreErr != nil {
+		log.Printf("⚠️  Warning: Could not initialize resource store: %v", resourceStoreErr)
+	}
+	catalogService := services.NewCatalogService()
+	resourceRenderer := services.NewResourceRenderer(catalogService)
+	var resourceDeployService *services.ResourceDeployService
+	if composeService != nil {
+		resourceDeployService = services.NewResourceDeployService(resourceRenderer, composeService)
+	}
+	if projectStore != nil && environmentStore != nil && workspaceService != nil {
+		services.EnsureProjectV1Defaults(projectStore, environmentStore, projectAccessStore, workspaceService)
+	}
+	if projectStore != nil && environmentStore != nil && resourceStore != nil && workspaceService != nil {
+		services.MigrateComposeStacksToResources(dataDir, projectStore, environmentStore, resourceStore, workspaceService)
+	}
 
 	// Initialize Server Store and Manager for multi-server support
 	serverStore, err := services.NewServerStore(dataDir)
@@ -117,14 +145,23 @@ func main() {
 	networkHandler := handlers.NewNetworkHandler(serverManager)
 	volumeHandler := handlers.NewVolumeHandler(serverManager)
 	systemHandler := handlers.NewSystemHandler(serverManager, statsHistoryService)
-	authHandler := handlers.NewAuthHandler(authService, inviteStore)
+	authHandler := handlers.NewAuthHandler(authService, inviteStore, projectAccessStore)
 	inviteHandler := handlers.NewInviteHandler(inviteStore, emailService)
 	serverHandler := handlers.NewServerHandler(serverStore, serverManager)
 
 	var projectHandler *handlers.ProjectHandler
 	if projectStore != nil {
-		projectHandler = handlers.NewProjectHandler(projectStore, serverStore, registryStore)
+		projectHandler = handlers.NewProjectHandler(projectStore, serverStore, registryStore, environmentStore, resourceStore, projectAccessStore, workspaceService, emailService)
 	}
+	var environmentHandler *handlers.EnvironmentHandler
+	if projectStore != nil && environmentStore != nil && workspaceService != nil {
+		environmentHandler = handlers.NewEnvironmentHandler(projectStore, environmentStore, resourceStore, projectAccessStore, workspaceService, resourceDeployService)
+	}
+	var resourceHandler *handlers.ResourceHandler
+	if projectStore != nil && environmentStore != nil && resourceStore != nil && resourceDeployService != nil && workspaceService != nil {
+		resourceHandler = handlers.NewResourceHandler(projectStore, environmentStore, resourceStore, projectAccessStore, workspaceService, resourceDeployService, serverManager)
+	}
+	catalogHandler := handlers.NewCatalogHandler(catalogService)
 
 	var registryProjectHandler *handlers.RegistryProjectHandler
 	if registryStore != nil {
@@ -162,6 +199,9 @@ func main() {
 	router.GET("/api/auth/google/start", authHandler.GoogleStart)
 	router.GET("/api/auth/google/callback", authHandler.GoogleCallback)
 	router.GET("/api/invites/accept", inviteHandler.AcceptInvite)
+	if projectHandler != nil {
+		router.GET("/api/projects/invites/accept", projectHandler.AcceptProjectInvite)
+	}
 
 	// API routes (protected)
 	api := router.Group("/api")
@@ -245,8 +285,36 @@ func main() {
 				projects.POST("", projectHandler.CreateProject)
 				projects.PUT("/:id", projectHandler.UpdateProject)
 				projects.DELETE("/:id", projectHandler.DeleteProject)
+				projects.GET("/:id/members", projectHandler.ListMembers)
+				projects.POST("/:id/invites", projectHandler.CreateProjectInvite)
+				if environmentHandler != nil {
+					projects.GET("/:id/environments", environmentHandler.List)
+					projects.POST("/:id/environments", environmentHandler.Create)
+				}
 			}
 		}
+
+		if resourceHandler != nil {
+			envResources := api.Group("/environments/:environmentId/resources")
+			{
+				envResources.GET("", resourceHandler.List)
+				envResources.POST("", resourceHandler.Create)
+			}
+			if environmentHandler != nil {
+				api.DELETE("/environments/:id", environmentHandler.Delete)
+			}
+			resourcesGroup := api.Group("/resources")
+			{
+				resourcesGroup.GET("/:id", resourceHandler.Get)
+				resourcesGroup.GET("/:id/config", resourceHandler.Config)
+				resourcesGroup.PUT("/:id", resourceHandler.Update)
+				resourcesGroup.DELETE("/:id", resourceHandler.Delete)
+				resourcesGroup.POST("/:id/deploy", resourceHandler.Deploy)
+				resourcesGroup.POST("/:id/undeploy", resourceHandler.Undeploy)
+			}
+		}
+
+		api.GET("/catalog/apps", catalogHandler.List)
 
 		if registryProjectHandler != nil {
 			rp := api.Group("/registry-projects")

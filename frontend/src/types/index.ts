@@ -190,7 +190,11 @@ export interface TestConnectionResponse {
 export interface Project {
   id: string;
   name: string;
+  slug: string;
   description: string;
+  owner: string;
+  ownerEmail?: string;
+  ownerSlug: string;
   serverId: string;
   registryProjectId?: string;
   composeProjectNames: string[];
@@ -212,6 +216,116 @@ export interface UpdateProjectRequest {
   serverId?: string;
   registryProjectId?: string | null;
   composeProjectNames?: string[];
+}
+
+export interface Environment {
+  id: string;
+  projectId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  serverId: string;
+  networkName: string;
+  workDir: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEnvironmentRequest {
+  name: string;
+  description?: string;
+  serverId?: string;
+}
+
+export type ResourceType = "compose" | "image" | "catalog";
+export type ResourceStatus = "idle" | "deploying" | "deployed" | "error" | "stopped";
+
+export interface Resource {
+  id: string;
+  projectId: string;
+  environmentId: string;
+  serverId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  type: ResourceType;
+  status: ResourceStatus;
+  composeProjectName: string;
+  workDir: string;
+  catalogAppId?: string;
+  image?: string;
+  command?: string;
+  volumes?: string[];
+  composeYaml?: string;
+  envContent?: string;
+  serviceName?: string;
+  hasHttp: boolean;
+  domain?: string;
+  internalPort?: number;
+  isDatabase: boolean;
+  lastDeployAt?: string;
+  lastDeployMessage?: string;
+  lastDeployError?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResourceConfig {
+  resource: Resource;
+  renderedComposeYaml: string;
+  envContent: string;
+  workDir: string;
+}
+
+export interface CreateResourceRequest {
+  name: string;
+  description?: string;
+  type: ResourceType;
+  catalogAppId?: string;
+  image?: string;
+  command?: string;
+  volumes?: string[];
+  composeYaml?: string;
+  envContent?: string;
+  serviceName?: string;
+  hasHttp?: boolean;
+  domain?: string;
+  internalPort?: number;
+  isDatabase?: boolean;
+}
+
+export type UpdateResourceRequest = Partial<CreateResourceRequest>;
+
+export interface CatalogApp {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  resourceType: ResourceType;
+  image?: string;
+  defaultServiceName: string;
+  defaultInternalPort?: number;
+  hasHttp: boolean;
+  isDatabase: boolean;
+  defaultEnvContent?: string;
+}
+
+export type ProjectRole = "owner" | "deployer" | "viewer";
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  email?: string;
+  username?: string;
+  role: ProjectRole;
+  invitedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProjectInviteRequest {
+  email: string;
+  role: Exclude<ProjectRole, "owner">;
 }
 
 /** Harbor-style registry namespace + credentials (stored on server; protect data dir). */
@@ -310,4 +424,3 @@ export interface UpdateTraefikConfigRequest {
   acmeEmail?: string;
   dashboardHost?: string;
 }
-

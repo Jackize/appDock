@@ -11,7 +11,11 @@ import (
 type Project struct {
 	ID                  string    `json:"id"`
 	Name                string    `json:"name"`
+	Slug                string    `json:"slug"`
 	Description         string    `json:"description"`
+	Owner               string    `json:"owner"`
+	OwnerEmail          string    `json:"ownerEmail,omitempty"`
+	OwnerSlug           string    `json:"ownerSlug"`
 	ServerID            string    `json:"serverId"`
 	RegistryProjectID   string    `json:"registryProjectId,omitempty"`
 	ComposeProjectNames []string  `json:"composeProjectNames"`
@@ -35,7 +39,7 @@ type UpdateProjectRequest struct {
 	ComposeProjectNames []string `json:"composeProjectNames"`
 }
 
-func NewProject(name, description, serverID string, composeNames []string) *Project {
+func NewProject(name, description, serverID string, composeNames []string, owner, ownerEmail, slug, ownerSlug string) *Project {
 	now := time.Now()
 	if serverID == "" {
 		serverID = "local"
@@ -43,7 +47,11 @@ func NewProject(name, description, serverID string, composeNames []string) *Proj
 	return &Project{
 		ID:                  uuid.New().String(),
 		Name:                name,
+		Slug:                slug,
 		Description:         description,
+		Owner:               owner,
+		OwnerEmail:          ownerEmail,
+		OwnerSlug:           ownerSlug,
 		ServerID:            serverID,
 		RegistryProjectID:   "",
 		ComposeProjectNames: composeNames,
