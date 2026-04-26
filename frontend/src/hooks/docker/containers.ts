@@ -52,6 +52,7 @@ export function useStartContainer() {
     mutationFn: containersAPI.start,
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.containers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.resources.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.system.all });
       toast.success(`Container ${id} đã được khởi động`);
     },
@@ -67,6 +68,7 @@ export function useStopContainer() {
     mutationFn: containersAPI.stop,
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.containers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.resources.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.system.all });
       toast.success(`Container ${id} đã được dừng`);
     },
@@ -82,6 +84,7 @@ export function useRestartContainer() {
     mutationFn: containersAPI.restart,
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.containers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.resources.all });
       toast.success(`Container ${id} đã được khởi động lại`);
     },
     onError: (error) => toast.error(error),
@@ -97,6 +100,7 @@ export function useRemoveContainer() {
       containersAPI.remove(id, force),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.containers.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.resources.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.system.all });
       toast.success(`Container ${id} đã được xóa`);
     },

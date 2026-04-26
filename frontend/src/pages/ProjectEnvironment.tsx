@@ -61,10 +61,31 @@ function statusClass(status: Resource["status"]) {
     case "deploying":
       return "bg-status-paused/20 text-status-paused";
     case "stopped":
-      return "bg-text-muted/20 text-text-muted";
+    case "idle":
+      return "bg-status-stopped/20 text-status-stopped";
     default:
       return "bg-background-hover text-text-secondary";
   }
+}
+
+function statusLabel(status: Resource["status"]) {
+  switch (status) {
+    case "deployed":
+      return "running";
+    case "idle":
+    case "stopped":
+      return "stopped";
+    default:
+      return status;
+  }
+}
+
+function primaryActionLabel(status: Resource["status"], isPending: boolean) {
+  const isStopped = status === "stopped" || status === "idle";
+  if (isPending) {
+    return isStopped ? "Starting" : "Deploying";
+  }
+  return isStopped ? "Start" : "Deploy";
 }
 
 function isLocalDomain(domain?: string) {
@@ -497,96 +518,102 @@ export function ProjectEnvironment() {
                 {!resources?.length ? (
                   <p className="p-5 text-sm text-text-muted">Chưa có resource trong environment này.</p>
                 ) : (
-                  resources.map((resource) => (
-                    <div key={resource.id} className="p-4">
-                      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold text-text-primary">{resource.name}</h3>
-                            <span className={`rounded px-2 py-0.5 text-xs ${statusClass(resource.status)}`}>
-                              {resource.status}
-                            </span>
-                            <span className="rounded bg-background-hover px-2 py-0.5 text-xs text-text-secondary">
-                              {resource.type}
-                            </span>
-                            {resource.isDatabase ? (
-                              <span className="inline-flex items-center gap-1 rounded bg-background-hover px-2 py-0.5 text-xs text-text-muted">
-                                <Database className="h-3 w-3" />
-                                private
+                  resources.map((resource) => {
+                    const isDeployed = resource.status === "deployed";
+                    const isDeploying = resource.status === "deploying" || deployingId === resource.id;
+                    const primaryLabel = primaryActionLabel(resource.status, isDeploying);
+
+                    return (
+                      <div key={resource.id} className="p-4">
+                        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-semibold text-text-primary">{resource.name}</h3>
+                              <span className={`rounded px-2 py-0.5 text-xs ${statusClass(resource.status)}`}>
+                                {statusLabel(resource.status)}
                               </span>
+                              <span className="rounded bg-background-hover px-2 py-0.5 text-xs text-text-secondary">
+                                {resource.type}
+                              </span>
+                              {resource.isDatabase ? (
+                                <span className="inline-flex items-center gap-1 rounded bg-background-hover px-2 py-0.5 text-xs text-text-muted">
+                                  <Database className="h-3 w-3" />
+                                  private
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-1 text-xs font-mono text-text-muted">
+                              {resource.composeProjectName}
+                            </p>
+                            {resource.domain ? (
+                              <a
+                                className="mt-2 inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                                href={resourceUrl(resource)}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <Globe className="h-4 w-4" />
+                                {resource.domain}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : resource.isDatabase ? (
+                              <p className="mt-2 text-sm text-text-muted">
+                                Dùng host nội bộ <span className="font-mono">{resource.serviceName || resource.slug}</span> trong cùng environment network.
+                              </p>
+                            ) : null}
+                            {resource.lastDeployError ? (
+                              <p className="mt-2 text-xs text-status-stopped">{resource.lastDeployError}</p>
                             ) : null}
                           </div>
-                          <p className="mt-1 text-xs font-mono text-text-muted">
-                            {resource.composeProjectName}
-                          </p>
-                          {resource.domain ? (
-                            <a
-                              className="mt-2 inline-flex items-center gap-1 text-sm text-accent hover:underline"
-                              href={resourceUrl(resource)}
-                              target="_blank"
-                              rel="noreferrer"
+                          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => openConfigModal(resource)}
                             >
-                              <Globe className="h-4 w-4" />
-                              {resource.domain}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          ) : resource.isDatabase ? (
-                            <p className="mt-2 text-sm text-text-muted">
-                              Dùng host nội bộ <span className="font-mono">{resource.serviceName || resource.slug}</span> trong cùng environment network.
-                            </p>
-                          ) : null}
-                          {resource.lastDeployError ? (
-                            <p className="mt-2 text-xs text-status-stopped">{resource.lastDeployError}</p>
-                          ) : null}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => openConfigModal(resource)}
-                          >
-                            <FileCode2 className="h-4 w-4" />
-                            Config
-                          </Button>
-                          <div className="inline-flex overflow-hidden rounded-lg border border-border">
-                          <Button
-                            size="sm"
-                            className="rounded-none border-0"
-                            onClick={() => deployResource.mutate(resource.id)}
-                            loading={deployingId === resource.id}
-                            disabled={!!deployingId || !!undeployingId}
-                          >
-                            <Rocket className="h-4 w-4" />
-                            Deploy
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="rounded-none border-0"
-                            onClick={() => undeployResource.mutate(resource.id)}
-                            loading={undeployingId === resource.id}
-                            disabled={!!deployingId || !!undeployingId}
-                          >
-                            <Square className="h-3 w-3" />
-                          </Button>
+                              <FileCode2 className="h-4 w-4" />
+                              Config
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={isDeployed ? "success" : "primary"}
+                              className="min-w-[96px]"
+                              onClick={() => deployResource.mutate(resource.id)}
+                              loading={deployingId === resource.id}
+                              disabled={!!deployingId || !!undeployingId}
+                            >
+                              <Rocket className="h-4 w-4" />
+                              {primaryLabel}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="min-w-[84px]"
+                              onClick={() => undeployResource.mutate(resource.id)}
+                              loading={undeployingId === resource.id}
+                              disabled={!!deployingId || !!undeployingId || !isDeployed}
+                            >
+                              <Square className="h-3 w-3" />
+                              Stop
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={() => {
+                                if (confirm(`Xóa resource "${resource.name}"?`)) {
+                                  removeResource.mutate(resource.id);
+                                }
+                              }}
+                              loading={removingId === resource.id}
+                              disabled={!!removingId}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => {
-                              if (confirm(`Xóa resource "${resource.name}"?`)) {
-                                removeResource.mutate(resource.id);
-                              }
-                            }}
-                            loading={removingId === resource.id}
-                            disabled={!!removingId}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

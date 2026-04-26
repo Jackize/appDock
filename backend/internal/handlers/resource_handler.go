@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
@@ -53,7 +54,9 @@ func (h *ResourceHandler) List(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": services.ErrProjectAccessDenied.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, h.resources.ListByEnvironment(envID))
+	resources := h.resources.ListByEnvironment(envID)
+	h.applyLiveStatuses(resources)
+	c.JSON(http.StatusOK, resources)
 }
 
 func (h *ResourceHandler) Create(c *gin.Context) {
@@ -258,4 +261,86 @@ func trimDeployOutput(out string) string {
 		return msg[:8000] + "..."
 	}
 	return msg
+}
+
+type composeProjectRuntime struct {
+	total   int
+	running int
+}
+
+const composeProjectLabel = "com.docker.compose.project"
+
+func (h *ResourceHandler) applyLiveStatuses(resources []*models.Resource) {
+	if h.serverManager == nil || len(resources) == 0 {
+		return
+	}
+
+	byServer := make(map[string][]*models.Resource)
+	for _, res := range resources {
+		byServer[res.ServerID] = append(byServer[res.ServerID], res)
+	}
+
+	for serverID, serverResources := range byServer {
+		raw, err := h.serverManager.ListContainers(serverID, true)
+		if err != nil {
+			continue
+		}
+		containers, err := normalizeContainerInfos(raw)
+		if err != nil {
+			continue
+		}
+		runtimes := composeProjectRuntimes(containers)
+		for _, res := range serverResources {
+			runtime, ok := runtimes[res.ComposeProjectName]
+			res.Status = liveResourceStatus(res.Status, runtime, ok)
+		}
+	}
+}
+
+func normalizeContainerInfos(raw interface{}) ([]services.ContainerInfo, error) {
+	if containers, ok := raw.([]services.ContainerInfo); ok {
+		return containers, nil
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil, err
+	}
+	var containers []services.ContainerInfo
+	if err := json.Unmarshal(data, &containers); err != nil {
+		return nil, err
+	}
+	return containers, nil
+}
+
+func composeProjectRuntimes(containers []services.ContainerInfo) map[string]composeProjectRuntime {
+	runtimes := make(map[string]composeProjectRuntime)
+	for _, container := range containers {
+		projectName := container.Labels[composeProjectLabel]
+		if projectName == "" {
+			continue
+		}
+		runtime := runtimes[projectName]
+		runtime.total++
+		if container.State == "running" {
+			runtime.running++
+		}
+		runtimes[projectName] = runtime
+	}
+	return runtimes
+}
+
+func liveResourceStatus(current models.ResourceStatus, runtime composeProjectRuntime, found bool) models.ResourceStatus {
+	if current == models.ResourceStatusDeploying {
+		return current
+	}
+	if !found || runtime.total == 0 {
+		if current == models.ResourceStatusDeployed {
+			return models.ResourceStatusStopped
+		}
+		return current
+	}
+	if runtime.running > 0 {
+		return models.ResourceStatusDeployed
+	}
+	return models.ResourceStatusStopped
 }

@@ -11,6 +11,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func TestLiveResourceStatusReflectsContainerState(t *testing.T) {
+	runtimes := composeProjectRuntimes([]services.ContainerInfo{
+		{
+			State:  "exited",
+			Labels: map[string]string{composeProjectLabel: "demo"},
+		},
+	})
+	if got := liveResourceStatus(models.ResourceStatusDeployed, runtimes["demo"], true); got != models.ResourceStatusStopped {
+		t.Fatalf("stopped containers should mark deployed resource stopped, got %q", got)
+	}
+
+	runtimes = composeProjectRuntimes([]services.ContainerInfo{
+		{
+			State:  "running",
+			Labels: map[string]string{composeProjectLabel: "demo"},
+		},
+	})
+	if got := liveResourceStatus(models.ResourceStatusStopped, runtimes["demo"], true); got != models.ResourceStatusDeployed {
+		t.Fatalf("running containers should mark stopped resource deployed, got %q", got)
+	}
+
+	if got := liveResourceStatus(models.ResourceStatusDeployed, composeProjectRuntime{}, false); got != models.ResourceStatusStopped {
+		t.Fatalf("missing containers should mark deployed resource stopped, got %q", got)
+	}
+
+	if got := liveResourceStatus(models.ResourceStatusDeploying, composeProjectRuntime{}, false); got != models.ResourceStatusDeploying {
+		t.Fatalf("deploying status should be preserved while deployment is in progress, got %q", got)
+	}
+}
+
 func TestResourceListRequiresProjectAccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	dataDir := t.TempDir()

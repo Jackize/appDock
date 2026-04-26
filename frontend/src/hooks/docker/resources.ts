@@ -9,7 +9,7 @@ export function useResources(environmentId: string) {
     queryKey: queryKeys.resources.list(environmentId),
     queryFn: () => resourcesAPI.list(environmentId),
     enabled: !!environmentId,
-    refetchInterval: 15000,
+    refetchInterval: 5000,
   });
 }
 

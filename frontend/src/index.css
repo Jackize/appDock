@@ -61,6 +61,10 @@ body {
     @apply bg-background-tertiary hover:bg-background-hover text-text-primary font-medium px-4 py-2 rounded-lg border border-border transition-all duration-200;
   }
 
+  .btn-success {
+    @apply bg-status-running hover:bg-green-500 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200;
+  }
+
   .btn-danger {
     @apply bg-status-stopped/20 hover:bg-status-stopped/30 text-status-stopped font-medium px-4 py-2 rounded-lg border border-status-stopped/30 transition-all duration-200;
   }
@@ -110,4 +114,3 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
-
